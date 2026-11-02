@@ -1,4 +1,5 @@
-export type Card =
+// 1入力1出力のカード
+export type UnaryCard =
   | { type: "plus"; value: number }
   | { type: "minus"; value: number }
   | { type: "multiply"; value: number }
@@ -7,12 +8,33 @@ export type Card =
   | { type: "backwards" }
   | { type: "divisorCount" };
 
-export type Stage ={
-  startNum:number; cards:Card[]
-}
+// 2入力2出力のカード
+export type BinaryCard =
+  | { type: "divmod" }
+  | { type: "gcdLcm" }
+  | { type: "ratio" }
+  | { type: "sortAsc" };
+
+// 3入力3出力のカード
+export type TernaryCard =
+  | { type: "ratio3" };
+
+export type Card = UnaryCard | BinaryCard | TernaryCard;
+
+// 最大3つの初期値 (1〜3個の数値)
+export type StartNumbers =
+  | [number]
+  | [number, number]
+  | [number, number, number];
+
+export type Stage = {
+  startNums: StartNumbers;
+  cards: Card[];
+};
+
 export const STAGES: Stage[] = [
   {
-    startNum: 6,
+    startNums: [6],
     cards: [
       { type: "plus", value: 1 },
       { type: "minus", value: 1 },
@@ -20,19 +42,17 @@ export const STAGES: Stage[] = [
     ],
   },
   {
-    startNum: 6,
+    startNums: [15, 18],
     cards: [
-      { type: "plus", value: 1 },
-      { type: "minus", value: 1 },
-      { type: "backwards" },
+      { type: "ratio" },
+      { type: "plus", value: 2 },
     ],
   },
   {
-    startNum: 6,
+    startNums: [10, 20, 5],
     cards: [
+      { type: "sortAsc" },
       { type: "plus", value: 1 },
-      { type: "minus", value: 1 },
-      { type: "backwards" },
     ],
   },
 ];

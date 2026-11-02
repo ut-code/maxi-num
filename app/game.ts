@@ -1,58 +1,66 @@
-import type { Card } from "./stages";
+import type { BinaryCard, Card, StartNumbers, TernaryCard, UnaryCard } from "./stages";
+
+// 演算結果型（成功 または エラー理由）
+export type StepResult<T> =
+  | { success: true; value: T }
+  | { success: false; reason: string };
 
 // 逆から読んだ数字を計算する関数。
-export function reverseDigits(value: number): number {
+export function reverseDigits(value: number): StepResult<number> {
   if (!Number.isSafeInteger(value)) {
-    throw new Error(
-      "数字の反転には、安全に扱える範囲の整数が必要です。"
-    );
+    return {
+      success: false,
+      reason: "数字の反転には、安全に扱える範囲の整数が必要です。",
+    };
   }
 
-// 絶対値を取ってから一度文字列に変換して、再び数字に戻す。
+  // 絶対値を取ってから一度文字列に変換して、再び数字に戻す。
   const absoluteValue = Math.abs(value);
   const digits = String(absoluteValue);
   const reversedDigits = digits.split("").reverse().join("");
   const reversedValue = Number(reversedDigits);
 
   if (!Number.isSafeInteger(reversedValue)) {
-    throw new Error(
-      "反転後の数値が、安全に扱える整数の範囲を超えました。"
-    );
+    return {
+      success: false,
+      reason: "反転後の数値が、安全に扱える整数の範囲を超えました。",
+    };
   }
 
-  return value < 0 ? -reversedValue : reversedValue;
+  const result = value < 0 ? -reversedValue : reversedValue;
+  return { success: true, value: result };
 }
 
 // 正の約数の個数を計算する関数。
-export function countDivisors(value: number): number {
+export function countDivisors(value: number): StepResult<number> {
   if (!Number.isSafeInteger(value)) {
-    throw new Error(
-      "約数の計算には、安全に扱える範囲の整数が必要です。"
-    );
+    return {
+      success: false,
+      reason: "約数の計算には、安全に扱える範囲の整数が必要です。",
+    };
   }
 
   if (value === 0) {
-    throw new Error(
-      "0の正の約数の個数は、有限の数として返せません。"
-    );
+    return {
+      success: false,
+      reason: "0の正の約数の個数は、有限の数として返せません。",
+    };
   }
 
-//   絶対値の平方根まで探索する。
+  // 絶対値の平方根まで探索する。
   const number = Math.abs(value);
   const limit = Math.floor(Math.sqrt(number));
 
   let count = 0;
 
-//   入力された数を割り切るかを1から順に確認する。
+  // 入力された数を割り切るかを1から順に確認する。
   for (let divisor = 1; divisor <= limit; divisor += 1) {
     if (number % divisor !== 0) {
       continue;
     }
 
-    // 割り切れた場合、ペアの約数を定義しておく。
     const pairedDivisor = number / divisor;
 
-    // 平方根だった場合は1つカウントして、それ以外の場合ペアとまとめて計2つカウントする。
     if (divisor === pairedDivisor) {
       count += 1;
     } else {
@@ -60,29 +68,191 @@ export function countDivisors(value: number): number {
     }
   }
 
-  return count;
+  return { success: true, value: count };
 }
 
-// カード一枚を適用して、計算結果を返す関数。
-export function applyCard(
+// 最大公約数 (GCD) を計算する内部ユーティリティ (事前チェック済み整数前提)。
+function calculateGcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+
+  while (y !== 0) {
+    const temp = x % y;
+    x = y;
+    y = temp;
+  }
+
+  return x;
+}
+
+// 最大公約数 (GCD) を計算する関数。
+export function gcd(a: number, b: number): StepResult<number> {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) {
+    return {
+      success: false,
+      reason: "GCDの計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  return { success: true, value: calculateGcd(a, b) };
+}
+
+// 3つの数の最大公約数 (GCD) を計算する関数。
+export function gcd3(a: number, b: number, c: number): StepResult<number> {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || !Number.isSafeInteger(c)) {
+    return {
+      success: false,
+      reason: "GCDの計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  return { success: true, value: calculateGcd(calculateGcd(a, b), c) };
+}
+
+// 最小公倍数 (LCM) を計算する関数。
+export function lcm(a: number, b: number): StepResult<number> {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) {
+    return {
+      success: false,
+      reason: "LCMの計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  if (a === 0 || b === 0) {
+    return { success: true, value: 0 };
+  }
+
+  const g = calculateGcd(a, b);
+  const result = Math.abs((a / g) * b);
+
+  if (!Number.isSafeInteger(result)) {
+    return {
+      success: false,
+      reason: "計算結果が安全に扱える整数の範囲を超えました。",
+    };
+  }
+
+  return { success: true, value: result };
+}
+
+// 割る数と割られる数を入力して商(整数)と余りを返す関数。
+export function divmod(
+  dividend: number,
+  divisor: number
+): StepResult<[quotient: number, remainder: number]> {
+  if (!Number.isSafeInteger(dividend) || !Number.isSafeInteger(divisor)) {
+    return {
+      success: false,
+      reason: "商と余りの計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  if (divisor === 0) {
+    return {
+      success: false,
+      reason: "0で割ることはできません。",
+    };
+  }
+
+  const quotient = Math.trunc(dividend / divisor);
+  const remainder = dividend % divisor;
+
+  return { success: true, value: [quotient, remainder] };
+}
+
+// 最大公約数と最小公倍数を返す関数。
+export function gcdLcm(
+  a: number,
+  b: number
+): StepResult<[gcd: number, lcm: number]> {
+  const g = gcd(a, b);
+  if (!g.success) {
+    return g;
+  }
+  const l = lcm(a, b);
+  if (!l.success) {
+    return l;
+  }
+  return { success: true, value: [g.value, l.value] };
+}
+
+// 2つの数の比を取る関数。
+export function ratio(
+  a: number,
+  b: number
+): StepResult<[simplifiedA: number, simplifiedB: number]> {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b)) {
+    return {
+      success: false,
+      reason: "比の計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  if (a === 0 && b === 0) {
+    return { success: true, value: [0, 0] };
+  }
+
+  const g = calculateGcd(a, b);
+  return { success: true, value: [a / g, b / g] };
+}
+
+// 3つの数の比を取る関数。
+export function ratio3(
+  a: number,
+  b: number,
+  c: number
+): StepResult<[simplifiedA: number, simplifiedB: number, simplifiedC: number]> {
+  if (!Number.isSafeInteger(a) || !Number.isSafeInteger(b) || !Number.isSafeInteger(c)) {
+    return {
+      success: false,
+      reason: "比の計算には、安全に扱える範囲の整数が必要です。",
+    };
+  }
+
+  if (a === 0 && b === 0 && c === 0) {
+    return { success: true, value: [0, 0, 0] };
+  }
+
+  const g = calculateGcd(calculateGcd(a, b), c);
+  return { success: true, value: [a / g, b / g, c / g] };
+}
+
+// 順番だけ変えて小さい順に並べる関数。
+export function sortAsc(
+  a: number,
+  b: number
+): StepResult<[smaller: number, larger: number]> {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    return {
+      success: false,
+      reason: "数値の比較には有限の数値が必要です。",
+    };
+  }
+
+  return { success: true, value: a <= b ? [a, b] : [b, a] };
+}
+
+// 1入力1出力のカードを適用して、計算結果を返す関数。
+export function applyUnaryCard(
   current: number,
-  card: Card
-): number {
+  card: UnaryCard
+): StepResult<number> {
   if (!Number.isFinite(current)) {
-    throw new Error(
-      "現在の数値が有限の数値ではありません。"
-    );
+    return {
+      success: false,
+      reason: "現在の数値が有限の数値ではありません。",
+    };
   }
 
   if ("value" in card && !Number.isFinite(card.value)) {
-    throw new Error(
-      "カードの値が有限の数値ではありません。"
-    );
+    return {
+      success: false,
+      reason: "カードの値が有限の数値ではありません。",
+    };
   }
 
   let result: number;
 
-// カードの種類によって処理を変える。
   switch (card.type) {
     case "plus":
       result = current + card.value;
@@ -98,63 +268,231 @@ export function applyCard(
 
     case "divide":
       if (card.value === 0) {
-        throw new Error("0で割ることはできません。");
+        return {
+          success: false,
+          reason: "0で割ることはできません。",
+        };
       }
-
-      result = current / card.value;
+      result = Math.trunc(current / card.value);
       break;
 
     case "mod":
       if (card.value === 0) {
-        throw new Error("0による剰余は計算できません。");
+        return {
+          success: false,
+          reason: "0による剰余は計算できません。",
+        };
       }
-
       result = current % card.value;
       break;
 
     case "backwards":
-      result = reverseDigits(current);
-      break;
+      return reverseDigits(current);
 
     case "divisorCount":
-      result = countDivisors(current);
-      break;
-
-    // エラー処理。
-    default: {
-      const unexpectedCard: never = card;
-
-      throw new Error(
-        `未対応のカードです: ${JSON.stringify(unexpectedCard)}`
-      );
-    }
+      return countDivisors(current);
   }
 
   if (!Number.isFinite(result)) {
-    throw new Error(
-      "計算結果が有限の数値ではありません。"
-    );
+    return {
+      success: false,
+      reason: "計算結果が有限の数値ではありません。",
+    };
   }
 
-  return result;
+  return { success: true, value: result };
 }
 
-// プレイヤーが決めた順序を反映したカードの配列orderedCardsに従い、初期値に演算を行う関数。
+// 2入力2出力のカードを適用して、計算結果を返す関数。
+export function applyBinaryCard(
+  a: number,
+  b: number,
+  card: BinaryCard
+): StepResult<[number, number]> {
+  switch (card.type) {
+    case "divmod":
+      return divmod(a, b);
+
+    case "gcdLcm":
+      return gcdLcm(a, b);
+
+    case "ratio":
+      return ratio(a, b);
+
+    case "sortAsc":
+      return sortAsc(a, b);
+  }
+}
+
+// 3入力3出力のカードを適用して、計算結果を返す関数。
+export function applyTernaryCard(
+  a: number,
+  b: number,
+  c: number,
+  card: TernaryCard
+): StepResult<[number, number, number]> {
+  switch (card.type) {
+    case "ratio3":
+      return ratio3(a, b, c);
+  }
+}
+
+// 汎用カード適用関数 (入力配列の長さとカード種別に応じた演算を適用)
+export function applyCard(
+  inputs: readonly number[],
+  card: Card
+): StepResult<number[]> {
+  if (inputs.length === 1 && isUnaryCard(card)) {
+    const res = applyUnaryCard(inputs[0], card);
+    if (!res.success) {
+      return res;
+    }
+    return { success: true, value: [res.value] };
+  }
+
+  if (inputs.length === 2 && isBinaryCard(card)) {
+    const res = applyBinaryCard(inputs[0], inputs[1], card);
+    if (!res.success) {
+      return res;
+    }
+    return { success: true, value: [...res.value] };
+  }
+
+  if (inputs.length === 3 && isTernaryCard(card)) {
+    const res = applyTernaryCard(inputs[0], inputs[1], inputs[2], card);
+    if (!res.success) {
+      return res;
+    }
+    return { success: true, value: [...res.value] };
+  }
+
+  return {
+    success: false,
+    reason: `カード ${card.type} に対する入力の個数が不正です (入力: ${inputs.length}個)`,
+  };
+}
+
+// カードの型ガード関数
+export function isUnaryCard(card: Card): card is UnaryCard {
+  return (
+    card.type === "plus" ||
+    card.type === "minus" ||
+    card.type === "multiply" ||
+    card.type === "divide" ||
+    card.type === "mod" ||
+    card.type === "backwards" ||
+    card.type === "divisorCount"
+  );
+}
+
+export function isBinaryCard(card: Card): card is BinaryCard {
+  return (
+    card.type === "divmod" ||
+    card.type === "gcdLcm" ||
+    card.type === "ratio" ||
+    card.type === "sortAsc"
+  );
+}
+
+export function isTernaryCard(card: Card): card is TernaryCard {
+  return card.type === "ratio3";
+}
+
+// 配列で与えられた複数の数値の平均を計算する関数。
+export function calculateAverageScore(
+  numbers: readonly number[]
+): StepResult<number> {
+  if (numbers.length === 0) {
+    return {
+      success: false,
+      reason: "数値が1つも存在しません。",
+    };
+  }
+
+  for (const num of numbers) {
+    if (!Number.isFinite(num)) {
+      return {
+        success: false,
+        reason: "有限の数値ではありません。",
+      };
+    }
+  }
+
+  const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+  return { success: true, value: sum / numbers.length };
+}
+
+// 成功時の計算結果
+export type CalculateSuccess = {
+  success: true;
+  finalNumbers: number[];
+  score: number;
+};
+
+// 失敗時（擬似エラー画面表示用）のエラー情報
+export type CalculateFailure = {
+  success: false;
+  error: {
+    message: string;
+    card?: Card;
+    stepIndex?: number;
+    inputs?: readonly number[];
+  };
+};
+
+// 実行結果を表す型（成功 または 擬似エラー画面用情報）
+export type ExecutionResult = CalculateSuccess | CalculateFailure;
+
+// 初期値群に対して順序付けられたカード配列を順次適用し、最終数値配列と最終スコア(平均)、または疑似エラー画面用データを返す関数。
 export function calculateResult(
-  startNum: number,
+  startNums: readonly number[],
   orderedCards: readonly Card[]
-): number {
-  if (!Number.isFinite(startNum)) {
-    throw new Error(
-      "初期値が有限の数値ではありません。"
-    );
+): ExecutionResult {
+  if (startNums.length === 0 || startNums.length > 3) {
+    return {
+      success: false,
+      error: {
+        message: "初期値は1個から3個である必要があります。",
+        inputs: startNums,
+      },
+    };
   }
 
-  let current = startNum;
+  let current = [...startNums];
 
-  for (const card of orderedCards) {
-    current = applyCard(current, card);
+  for (let i = 0; i < orderedCards.length; i += 1) {
+    const card = orderedCards[i];
+    const step = applyCard(current, card);
+
+    if (!step.success) {
+      return {
+        success: false,
+        error: {
+          message: step.reason,
+          card,
+          stepIndex: i,
+          inputs: current,
+        },
+      };
+    }
+
+    current = step.value;
   }
 
-  return current;
+  const avgResult = calculateAverageScore(current);
+  if (!avgResult.success) {
+    return {
+      success: false,
+      error: {
+        message: avgResult.reason,
+        inputs: current,
+      },
+    };
+  }
+
+  return {
+    success: true,
+    finalNumbers: current,
+    score: avgResult.value,
+  };
 }
