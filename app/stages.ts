@@ -1,10 +1,12 @@
-type Card =
+export type Card =
   | { type: "plus"; value: number }
   | { type: "minus"; value: number }
   | { type: "multiply"; value: number }
   | { type: "divide"; value: number }
   | { type: "mod"; value: number }
-  | { type: "backwards" };
+  | { type: "backwards" }
+  | { type: "divisorCount" };
+
 export type Stage ={
   startNum:number; cards:Card[]
 }
