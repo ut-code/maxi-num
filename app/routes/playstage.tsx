@@ -101,6 +101,8 @@ export default function PlayStage(props?: Partial<Stage>) {
 
   // ドラッグ開始時のポインタ座標（微小移動をクリックとして扱うための閾値判定用）
   const dragStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragStartTimeRef = useRef<number>(0);
+  const hasMovedRef = useRef<boolean>(false);
 
   // ステージのカードリスト
   const stageCards = stage.cards;
@@ -126,6 +128,25 @@ export default function PlayStage(props?: Partial<Stage>) {
   // ドラッグ＆ドロップ（ホールドして運ぶ）ロジック
   // ----------------------------------------------------
 
+  // スロットとの当たり判定
+  const getHitSlot = useCallback((x: number, y: number): number | null => {
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const slotEl = slotRefs.current[i];
+      if (!slotEl) continue;
+      const rect = slotEl.getBoundingClientRect();
+      // 指やマウスが合わせやすいよう少し広めの判定領域
+      if (
+        x >= rect.left - 15 &&
+        x <= rect.right + 15 &&
+        y >= rect.top - 15 &&
+        y <= rect.bottom + 15
+      ) {
+        return i;
+      }
+    }
+    return null;
+  }, []);
+
   // ホールド開始（トレイのカード または スロットのカード）
   const handlePointerDown = useCallback(
     (
@@ -140,6 +161,8 @@ export default function PlayStage(props?: Partial<Stage>) {
       const rect = e.currentTarget.getBoundingClientRect();
 
       dragStartPosRef.current = { x: e.clientX, y: e.clientY };
+      dragStartTimeRef.current = Date.now();
+      hasMovedRef.current = false;
 
       setDragState({
         card,
@@ -155,10 +178,15 @@ export default function PlayStage(props?: Partial<Stage>) {
           height: rect.height,
         },
       });
-      setHoveredSlotIndex(null);
+      // 左スロットから掴んだ場合はそのスロット、トレイからの場合は座標で判定
+      const initialHit =
+        source.type === "slot"
+          ? source.slotIndex
+          : getHitSlot(e.clientX, e.clientY);
+      setHoveredSlotIndex(initialHit);
       setErrorMessage(null);
     },
-    [isExecuting]
+    [isExecuting, getHitSlot]
   );
 
   // ドラッグ中のグローバルリスナー（ポインタ移動・ホールド解除）
@@ -166,6 +194,16 @@ export default function PlayStage(props?: Partial<Stage>) {
     if (!dragState) return;
 
     const handlePointerMove = (e: PointerEvent) => {
+      if (dragStartPosRef.current) {
+        const dist = Math.hypot(
+          e.clientX - dragStartPosRef.current.x,
+          e.clientY - dragStartPosRef.current.y
+        );
+        if (dist > 5) {
+          hasMovedRef.current = true;
+        }
+      }
+
       setDragState((prev) =>
         prev
           ? {
@@ -176,29 +214,15 @@ export default function PlayStage(props?: Partial<Stage>) {
           : null
       );
 
-      // 左側の4つのスロットとの当たり判定（Rect チェック）
-      let hitSlot: number | null = null;
-      for (let i = 0; i < SLOT_COUNT; i++) {
-        const slotEl = slotRefs.current[i];
-        if (!slotEl) continue;
-        const rect = slotEl.getBoundingClientRect();
-        // 指やマウスが合わせやすいよう少し広めの判定領域
-        if (
-          e.clientX >= rect.left - 15 &&
-          e.clientX <= rect.right + 15 &&
-          e.clientY >= rect.top - 15 &&
-          e.clientY <= rect.bottom + 15
-        ) {
-          hitSlot = i;
-          break;
-        }
-      }
-      setHoveredSlotIndex(hitSlot);
+      // 左側の4つのスロットとの当たり判定
+      setHoveredSlotIndex(getHitSlot(e.clientX, e.clientY));
     };
 
     const handlePointerUp = (e: PointerEvent) => {
       const currentDrag = dragState;
-      const targetSlot = hoveredSlotIndex;
+      // 離した瞬間の座標で確実に判定（フォールバックとして hoveredSlotIndex）
+      const hitSlot = getHitSlot(e.clientX, e.clientY);
+      const targetSlot = hitSlot !== null ? hitSlot : hoveredSlotIndex;
       setDragState(null);
       setHoveredSlotIndex(null);
 
@@ -223,13 +247,16 @@ export default function PlayStage(props?: Partial<Stage>) {
         } else {
           // 左スロットから別のスロットへ移動
           const fromSlot = currentDrag.source.slotIndex;
-          setPlacedIndices((prev) => {
-            const next = [...prev];
-            const temp = next[targetSlot];
-            next[targetSlot] = next[fromSlot];
-            next[fromSlot] = temp;
-            return next;
-          });
+          if (targetSlot !== fromSlot) {
+            setPlacedIndices((prev) => {
+              const next = [...prev];
+              const temp = next[targetSlot];
+              next[targetSlot] = next[fromSlot];
+              next[fromSlot] = temp;
+              return next;
+            });
+          }
+          // targetSlot === fromSlot（同じスロット）の場合は維持（スロットから外さない）
         }
       } else {
         // === スロットがないところでホールドを外した ===
@@ -281,7 +308,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [dragState, hoveredSlotIndex, placedIndices]);
+  }, [dragState, hoveredSlotIndex, placedIndices, getHitSlot]);
 
   // スナップバックアニメーションの駆動（次フレームで target へ transition、完了後消去）
   useEffect(() => {
@@ -305,9 +332,10 @@ export default function PlayStage(props?: Partial<Stage>) {
   const handleSlotClick = useCallback(
     (slotIndex: number) => {
       if (isExecuting) return;
-      // ドラッグ移動した場合はクリックとみなさない
-      if (dragStartPosRef.current) {
-        dragStartPosRef.current = null;
+      // ドラッグ移動した場合や長押し（ホールド）した場合はクリック（タップ）とみなさない
+      const holdDuration = Date.now() - dragStartTimeRef.current;
+      if (hasMovedRef.current || holdDuration > 250) {
+        return;
       }
       setPlacedIndices((prev) => {
         const next = [...prev];
@@ -417,6 +445,9 @@ export default function PlayStage(props?: Partial<Stage>) {
           const msg =
             err instanceof Error ? err.message : "計算エラーが発生しました";
           setErrorMessage(msg);
+          setTimeout(()=>{
+            setErrorMessage(null);
+          }, 1000)
         }
 
         if (hasError) {
