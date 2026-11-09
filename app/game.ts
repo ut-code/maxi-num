@@ -218,22 +218,28 @@ export function ratio3(
 }
 
 // 順番だけ変えて小さい順に並べる関数。
+export function sortAsc(a: number, b: number): StepResult<[number, number]>;
 export function sortAsc(
   a: number,
-  b: number
-): StepResult<[smaller: number, larger: number]> {
-  if (!Number.isFinite(a) || !Number.isFinite(b)) {
-    return {
-      success: false,
-      reason: "数値の比較には有限の数値が必要です。",
-    };
+  b: number,
+  c: number
+): StepResult<[number, number, number]>;
+export function sortAsc(...numbers: number[]): StepResult<number[]> {
+  for (const n of numbers) {
+    if (!Number.isFinite(n)) {
+      return {
+        success: false,
+        reason: "数値の比較には有限の数値が必要です。",
+      };
+    }
   }
 
-  return { success: true, value: a <= b ? [a, b] : [b, a] };
+  const sorted = [...numbers].sort((x, y) => x - y);
+  return { success: true, value: sorted };
 }
 
-// 1入力1出力のカードを適用して、計算結果を返す関数。
-export function applyUnaryCard(
+// 1つの数値に対して1入力1出力のカードを適用して、計算結果を返す関数。
+export function applyUnaryToNumber(
   current: number,
   card: UnaryCard
 ): StepResult<number> {
@@ -303,6 +309,31 @@ export function applyUnaryCard(
   return { success: true, value: result };
 }
 
+// 1入力1出力のカードを適用して、計算結果を返す関数。
+// currentsが複数個の場合はそれぞれの要素について値を計算した配列を返す。
+export function applyUnaryCard(
+  currents: readonly number[],
+  card: UnaryCard
+): StepResult<number[]> {
+  if (currents.length === 0) {
+    return {
+      success: false,
+      reason: "入力の数値が存在しません。",
+    };
+  }
+
+  const results: number[] = [];
+  for (const current of currents) {
+    const res = applyUnaryToNumber(current, card);
+    if (!res.success) {
+      return res;
+    }
+    results.push(res.value);
+  }
+
+  return { success: true, value: results };
+}
+
 // 2入力2出力のカードを適用して、計算結果を返す関数。
 export function applyBinaryCard(
   a: number,
@@ -334,6 +365,8 @@ export function applyTernaryCard(
   switch (card.type) {
     case "ratio3":
       return ratio3(a, b, c);
+    case "sortAsc":
+      return sortAsc(a, b, c);
   }
 }
 
@@ -342,12 +375,8 @@ export function applyCard(
   inputs: readonly number[],
   card: Card
 ): StepResult<number[]> {
-  if (inputs.length === 1 && isUnaryCard(card)) {
-    const res = applyUnaryCard(inputs[0], card);
-    if (!res.success) {
-      return res;
-    }
-    return { success: true, value: [res.value] };
+  if (isUnaryCard(card)) {
+    return applyUnaryCard(inputs, card);
   }
 
   if (inputs.length === 2 && isBinaryCard(card)) {
@@ -395,7 +424,7 @@ export function isBinaryCard(card: Card): card is BinaryCard {
 }
 
 export function isTernaryCard(card: Card): card is TernaryCard {
-  return card.type === "ratio3";
+  return card.type === "ratio3" || card.type === "sortAsc";
 }
 
 // 配列で与えられた複数の数値の平均を計算する関数。

@@ -64,6 +64,16 @@ export function formatOperationCard(card: Card): string {
             return "反転する";
         case "divisorCount":
             return "約数する";
+        case "divmod":
+            return "商と余り";
+        case "gcdLcm":
+            return "最大公約数と最小公倍数";
+        case "ratio":
+            return "比にする";
+        case "sortAsc":
+            return "小さい順に並べる";
+        case "ratio3":
+            return "3数の比にする";
         default: {
             const _exhaustiveCheck: never = card;
             return "";
@@ -89,11 +99,13 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         let content: React.ReactNode = card ? formatOperationCard(card) : null;
         const isEmpty = content === null;
         const fontSizeStyle =
-            typeof content === "string" && content.length > 6
-                ? "text-base sm:text-lg px-2 text-center"
-                : typeof content === "string" && content.length > 4
-                    ? "text-xl px-2 text-center"
-                    : "text-2xl";
+            typeof content === "string" && content.length > 10
+                ? "text-xs sm:text-sm px-1 text-center leading-tight"
+                : typeof content === "string" && content.length > 6
+                    ? "text-base sm:text-lg px-2 text-center"
+                    : typeof content === "string" && content.length > 4
+                        ? "text-xl px-2 text-center"
+                        : "text-2xl";
 
         let appearanceStyle =
             "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)]";

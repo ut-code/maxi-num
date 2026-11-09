@@ -42,7 +42,7 @@ type SnapBackState = {
 
 // 移動する数字トークンの状態
 type MovingToken = {
-  value: number;
+  values: number[];
   x: number;
   y: number;
   scale: number;
@@ -58,7 +58,7 @@ export default function PlayStage(props?: Partial<Stage>) {
   const stageNumber = !Number.isNaN(routeStageNumber) ? routeStageNumber : 1;
   const currentStage = STAGES[stageNumber - 1] ?? STAGES[0];
   const stage = {
-    startNum: props?.startNum ?? currentStage.startNum,
+    startNums: props?.startNums ?? currentStage.startNums,
     cards: props?.cards ?? currentStage.cards,
   };
 
@@ -75,14 +75,19 @@ export default function PlayStage(props?: Partial<Stage>) {
     null,
   ]);
 
-  // 計算結果の表示数値（初期値は startNum）
-  const [outputNum, setOutputNum] = useState<number>(stage.startNum);
+  // 計算結果の表示数値（初期値は startNums）
+  const [outputNums, setOutputNums] = useState<number[]>(stage.startNums);
   // 実行中状態
   const [isExecuting, setIsExecuting] = useState(false);
   // 現在実行ハイライト中のスロットインデックス
   const [activeStep, setActiveStep] = useState<number | null>(null);
   // エラーメッセージ（0での除算など）
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // stage.startNums の変更時に出力数値をリセット
+  useEffect(() => {
+    setOutputNums(stage.startNums);
+  }, [stage.startNums]);
 
   // 移動する数字トークンのアニメーション状態
   const [movingToken, setMovingToken] = useState<MovingToken | null>(null);
@@ -94,8 +99,8 @@ export default function PlayStage(props?: Partial<Stage>) {
 
   // 各要素の DOM Ref
   const pipelineContainerRef = useRef<HTMLDivElement | null>(null);
-  const startNumRef = useRef<HTMLSpanElement | null>(null);
-  const outputNumRef = useRef<HTMLSpanElement | null>(null);
+  const startNumsRef = useRef<HTMLSpanElement | null>(null);
+  const outputNumsRef = useRef<HTMLSpanElement | null>(null);
   const slotRefs = useRef<(HTMLDivElement | null)[]>([]);
   const trayItemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -326,8 +331,8 @@ export default function PlayStage(props?: Partial<Stage>) {
     if (isExecuting) return;
 
     const containerEl = pipelineContainerRef.current;
-    const startEl = startNumRef.current;
-    const outEl = outputNumRef.current;
+    const startEl = startNumsRef.current;
+    const outEl = outputNumsRef.current;
     if (!containerEl || !startEl || !outEl) return;
 
     setErrorMessage(null);
@@ -355,12 +360,12 @@ export default function PlayStage(props?: Partial<Stage>) {
     const topCorner = { x: centerX, y: startCenter.y };
     const bottomCorner = { x: centerX, y: outCenter.y };
 
-    let currentVal = stage.startNum;
-    setOutputNum(currentVal);
+    let currentVals: number[] = stage.startNums;
+    setOutputNums(currentVals);
 
     // 1. 開始数字の位置にトークンを配置
     setMovingToken({
-      value: currentVal,
+      values: currentVals,
       x: startCenter.x,
       y: startCenter.y,
       scale: 1,
@@ -409,9 +414,15 @@ export default function PlayStage(props?: Partial<Stage>) {
         setActiveStep(i);
         const card = stageCards[cardIndex];
 
-        let nextVal = currentVal;
+        let nextVals = currentVals;
         try {
-          nextVal = applyCard(currentVal, card);
+          const result = applyCard(currentVals, card);
+          if (!result.success) {
+            hasError = true;
+            setErrorMessage(result.reason);
+          } else {
+            nextVals = result.value;
+          }
         } catch (err: unknown) {
           hasError = true;
           const msg =
@@ -435,14 +446,14 @@ export default function PlayStage(props?: Partial<Stage>) {
           break;
         }
 
-        currentVal = nextVal;
+        currentVals = nextVals;
 
         // 計算適用時のポップ演出（値が変わり、ポンッと弾む）
         setMovingToken((prev) =>
           prev
             ? {
                 ...prev,
-                value: currentVal,
+                values: currentVals,
                 scale: 1.35,
                 isPopping: true,
                 transition: "transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)",
@@ -498,7 +509,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       await new Promise((r) => setTimeout(r, 220));
 
       // 6. 到着：最終結果に吸い込まれるように確定
-      setOutputNum(currentVal);
+      setOutputNums(currentVals);
       setMovingToken((prev) =>
         prev
           ? {
@@ -515,7 +526,7 @@ export default function PlayStage(props?: Partial<Stage>) {
     setMovingToken(null);
     setActiveStep(null);
     setIsExecuting(false);
-  }, [isExecuting, stage.startNum, placedIndices, stageCards]);
+  }, [isExecuting, stage.startNums, placedIndices, stageCards]);
 
   return (
     <main
@@ -563,8 +574,8 @@ export default function PlayStage(props?: Partial<Stage>) {
           <div className="relative w-48 h-10 select-none">
             {/* 開始数字 */}
             <span
-              ref={startNumRef}
-              className={`absolute -left-12 top-0.5 font-serif text-2xl text-[#2d2d2d] transition-opacity duration-200 ${
+              ref={startNumsRef}
+              className={`absolute right-[calc(100%+24px)] top-0.5 font-serif text-2xl text-[#2d2d2d] whitespace-nowrap transition-opacity duration-200 ${
                 movingToken ? "opacity-35" : "opacity-100"
               }`}
               style={{
@@ -572,7 +583,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                   "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
               }}
             >
-              {stage.startNum}
+              {stage.startNums.join(", ")}
             </span>
 
             {/* 上部矢印SVG: 開始数字から右に進み、スロット中央(x=96)で折れ曲がり下を向く */}
@@ -682,8 +693,8 @@ export default function PlayStage(props?: Partial<Stage>) {
 
             {/* 出力結果数字 */}
             <span
-              ref={outputNumRef}
-              className={`absolute left-[144px] top-1.5 font-serif text-2xl text-[#2d2d2d] transition-transform duration-200 ${
+              ref={outputNumsRef}
+              className={`absolute left-[144px] top-1.5 font-serif text-2xl text-[#2d2d2d] whitespace-nowrap transition-transform duration-200 ${
                 !isExecuting ? "scale-100" : ""
               }`}
               style={{
@@ -691,7 +702,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                   "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
               }}
             >
-              {outputNum}
+              {outputNums.join(", ")}
             </span>
           </div>
 
@@ -706,7 +717,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                 transition: movingToken.transition,
                 opacity: movingToken.opacity,
               }}
-              className={`z-30 pointer-events-none flex items-center justify-center min-w-10 h-10 px-2 rounded-full font-serif font-bold text-xl shadow-[0_4px_16px_rgba(0,0,0,0.2)] ${
+              className={`z-30 pointer-events-none flex items-center justify-center min-w-10 h-10 px-3 rounded-full font-serif font-bold text-lg whitespace-nowrap shadow-[0_4px_16px_rgba(0,0,0,0.2)] ${
                 movingToken.isError
                   ? "bg-red-50 border-2 border-red-500 text-red-600 ring-4 ring-red-200"
                   : movingToken.isPopping
@@ -714,7 +725,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                   : "bg-[#fdfcf9] border-2 border-[#f6ba52] text-[#2d2d2d]"
               }`}
             >
-              {movingToken.value}
+              {movingToken.values.join(", ")}
             </div>
           )}
         </div>
