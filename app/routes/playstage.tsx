@@ -4,6 +4,7 @@ import { STAGES, type Card, type Stage } from "~/stages";
 import { applyCard } from "~/game";
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
+import { ScorePopup } from "~/components/ScorePopup";
 
 export function meta() {
   return [
@@ -57,6 +58,8 @@ export default function PlayStage(props?: Partial<Stage>) {
   const routeStageNumber = params.id ? parseInt(params.id, 10) : 1;
   const stageNumber = !Number.isNaN(routeStageNumber) ? routeStageNumber : 1;
   const currentStage = STAGES[stageNumber - 1] ?? STAGES[0];
+  // 存在しない番号のときはステージ1を表示しているので、スコアもステージ1として扱う
+  const scoreStageNumber = STAGES[stageNumber - 1] ? stageNumber : 1;
   const stage = {
     startNum: props?.startNum ?? currentStage.startNum,
     cards: props?.cards ?? currentStage.cards,
@@ -83,6 +86,13 @@ export default function PlayStage(props?: Partial<Stage>) {
   const [activeStep, setActiveStep] = useState<number | null>(null);
   // エラーメッセージ（0での除算など）
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // 演算が最後まで終わったときに表示するスコア画面の内容（×で閉じると null）
+  // ステージを移っても状態が残るので、どのステージの結果かも持つ
+  const [score, setScore] = useState<{
+    stageNumber: number;
+    result: number;
+    usedAllCards: boolean;
+  } | null>(null);
 
   // 移動する数字トークンのアニメーション状態
   const [movingToken, setMovingToken] = useState<MovingToken | null>(null);
@@ -546,7 +556,17 @@ export default function PlayStage(props?: Partial<Stage>) {
     setMovingToken(null);
     setActiveStep(null);
     setIsExecuting(false);
-  }, [isExecuting, stage.startNum, placedIndices, stageCards]);
+
+    // 演算が最後まで終わったら、スコア画面を表示する
+    if (!hasError) {
+      setScore({
+        stageNumber: scoreStageNumber,
+        result: currentVal,
+        usedAllCards:
+          placedIndices.filter((index) => index !== null).length === stageCards.length,
+      });
+    }
+  }, [isExecuting, stage.startNum, placedIndices, stageCards, scoreStageNumber]);
 
   return (
     <main
@@ -862,6 +882,16 @@ export default function PlayStage(props?: Partial<Stage>) {
         >
           <OperationTile card={snapBack.card} />
         </div>
+      )}
+
+      {/* スコア画面（×で閉じると、プレイした盤面がそのまま見られる） */}
+      {score && score.stageNumber === scoreStageNumber && (
+        <ScorePopup
+          stageNumber={score.stageNumber}
+          result={score.result}
+          usedAllCards={score.usedAllCards}
+          onClose={() => setScore(null)}
+        />
       )}
     </main>
   );
