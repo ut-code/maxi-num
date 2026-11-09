@@ -90,7 +90,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         const isEmpty = content === null;
         const fontSizeStyle =
             typeof content === "string" && content.length > 6
-                ? "text-base sm:text-lg px-2 text-center"
+                ? "text-base sm:text-lg px-2 text-center whitespace-nowrap"
                 : typeof content === "string" && content.length > 4
                     ? "text-xl px-2 text-center"
                     : "text-2xl";
