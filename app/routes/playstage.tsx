@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { STAGES, type Card, type Stage } from "~/stages";
 import { applyCard } from "~/game";
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
+import { FallingBackground } from "~/components/FallingBackground";
 
 export function meta() {
   return [
@@ -55,11 +56,18 @@ type MovingToken = {
 
 export default function PlayStage(props?: Partial<Stage>) {
   const params = useParams();
+  // ステージを移ったときに、並べたカードや計算結果などの状態をリセットする
+  return <StageGame key={params.id} {...props} />;
+}
+
+function StageGame(props?: Partial<Stage>) {
+  const params = useParams();
   const routeStageNumber = params.id ? parseInt(params.id, 10) : 1;
   const stageNumber = !Number.isNaN(routeStageNumber) ? routeStageNumber : 1;
   const currentStage = STAGES[stageNumber - 1] ?? STAGES[0];
   // 存在しない番号のときはステージ1を表示しているので、スコアもステージ1として扱う
   const scoreStageNumber = STAGES[stageNumber - 1] ? stageNumber : 1;
+  const hasNextStage = scoreStageNumber < STAGES.length;
   const stage = {
     startNum: props?.startNum ?? currentStage.startNum,
     cards: props?.cards ?? currentStage.cards,
@@ -573,28 +581,42 @@ export default function PlayStage(props?: Partial<Stage>) {
       key={stageNumber}
       className="relative min-h-screen w-full bg-[#faf8f3] overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
     >
-      {/* 背景装飾 */}
-      <div
-        className="absolute top-12 sm:top-16 left-[53%] sm:left-[55%] w-12 sm:w-16 h-12 sm:h-16 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute top-20 left-[33%] sm:left-[35%] w-3.5 h-3.5 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute bottom-16 sm:bottom-20 left-[18%] sm:left-[22%] w-10 sm:w-11 h-10 sm:h-11 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute bottom-8 sm:bottom-12 left-[48%] sm:left-[52%] w-18 sm:w-22 h-18 sm:h-22 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
+      {/* 背景：ホーム画面と同じ四角形のアニメーション（数字は流さない） */}
+      <FallingBackground showNumbers={false} />
 
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
         <StageHeader stageNumber={stageNumber} backTo="/stages" variant="corner" />
       </div>
+
+      {/* 右下の次のステージへ進むボタン */}
+      {hasNextStage && (
+        <Link
+          to={`/play/${scoreStageNumber + 1}`}
+          className="group absolute bottom-0 right-0 z-20 inline-flex items-center gap-3 bg-white rounded-tl-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-6 pr-5 py-3 select-none"
+        >
+          <span
+            className="text-xl sm:text-2xl font-serif text-[#aba8a1] group-hover:text-[#8a8780] tracking-wider transition-colors duration-150"
+            style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
+          >
+            次のステージへ
+          </span>
+          <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[#efbc62] group-hover:bg-[#e9ad45] group-active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.12)] transition-all duration-150">
+            <svg
+              className="w-7 h-7 sm:w-8 sm:h-8 text-[#6b5832] translate-x-0.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </span>
+        </Link>
+      )}
 
       {/* エラーメッセージ */}
       {errorMessage && (

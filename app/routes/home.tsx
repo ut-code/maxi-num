@@ -18,10 +18,10 @@ export default function Home() {
       <div className="relative z-10 flex flex-col items-center justify-center -translate-y-4">
         {/* タイトル（明朝体） */}
         <h1
-          className="text-5xl md:text-7xl font-normal tracking-[0.25em] text-[#55524e] font-serif mb-24 pl-[0.25em]"
+          className="text-5xl md:text-7xl font-bold tracking-[0.25em] text-[#55524e] font-serif mb-24 pl-[0.25em]"
           style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
         >
-          題名
+          MaxiNum
         </h1>
 
         {/* 開始ボタン */}
