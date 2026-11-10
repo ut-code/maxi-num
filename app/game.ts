@@ -238,8 +238,8 @@ export function sortAsc(...numbers: number[]): StepResult<number[]> {
   return { success: true, value: sorted };
 }
 
-// 1つの数値に対して1入力1出力のカードを適用して、計算結果を返す関数。
-export function applyUnaryToNumber(
+// 1入力1出力のカードを適用して、計算結果を返す関数。
+export function applyUnaryCard(
   current: number,
   card: UnaryCard
 ): StepResult<number> {
@@ -309,31 +309,6 @@ export function applyUnaryToNumber(
   return { success: true, value: result };
 }
 
-// 1入力1出力のカードを適用して、計算結果を返す関数。
-// currentsが複数個の場合はそれぞれの要素について値を計算した配列を返す。
-export function applyUnaryCard(
-  currents: readonly number[],
-  card: UnaryCard
-): StepResult<number[]> {
-  if (currents.length === 0) {
-    return {
-      success: false,
-      reason: "入力の数値が存在しません。",
-    };
-  }
-
-  const results: number[] = [];
-  for (const current of currents) {
-    const res = applyUnaryToNumber(current, card);
-    if (!res.success) {
-      return res;
-    }
-    results.push(res.value);
-  }
-
-  return { success: true, value: results };
-}
-
 // 2入力2出力のカードを適用して、計算結果を返す関数。
 export function applyBinaryCard(
   a: number,
@@ -373,10 +348,33 @@ export function applyTernaryCard(
 // 汎用カード適用関数 (入力配列の長さとカード種別に応じた演算を適用)
 export function applyCard(
   inputs: readonly number[],
-  card: Card
+  card: Card,
+  targetLane?: number
 ): StepResult<number[]> {
   if (isUnaryCard(card)) {
-    return applyUnaryCard(inputs, card);
+    if (inputs.length === 1) {
+      const res = applyUnaryCard(inputs[0], card);
+      if (!res.success) {
+        return res;
+      }
+      return { success: true, value: [res.value] };
+    }
+
+    const lane = targetLane ?? 0;
+    if (lane < 0 || lane >= inputs.length) {
+      return {
+        success: false,
+        reason: `指定されたレーン ${lane} が範囲外です。`,
+      };
+    }
+
+    const res = applyUnaryCard(inputs[lane], card);
+    if (!res.success) {
+      return res;
+    }
+    const next = [...inputs];
+    next[lane] = res.value;
+    return { success: true, value: next };
   }
 
   if (inputs.length === 2 && isBinaryCard(card)) {
@@ -472,10 +470,14 @@ export type CalculateFailure = {
 // 実行結果を表す型（成功 または 擬似エラー画面用情報）
 export type ExecutionResult = CalculateSuccess | CalculateFailure;
 
+export type CardStep =
+  | Card
+  | { card: Card; targetLane?: number };
+
 // 初期値群に対して順序付けられたカード配列を順次適用し、最終数値配列と最終スコア(平均)、または疑似エラー画面用データを返す関数。
 export function calculateResult(
   startNums: readonly number[],
-  orderedCards: readonly Card[]
+  orderedCards: readonly CardStep[]
 ): ExecutionResult {
   if (startNums.length === 0 || startNums.length > 3) {
     return {
@@ -490,8 +492,10 @@ export function calculateResult(
   let current = [...startNums];
 
   for (let i = 0; i < orderedCards.length; i += 1) {
-    const card = orderedCards[i];
-    const step = applyCard(current, card);
+    const stepItem = orderedCards[i];
+    const card = "type" in stepItem ? stepItem : stepItem.card;
+    const targetLane = "targetLane" in stepItem ? stepItem.targetLane : undefined;
+    const step = applyCard(current, card, targetLane);
 
     if (!step.success) {
       return {

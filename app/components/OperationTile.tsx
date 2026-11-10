@@ -43,6 +43,10 @@ export type OperationTileProps = {
      * ゴースト状態（ドラッグ中の元位置プレースホルダーなど）
      */
     isGhost?: boolean;
+    /**
+     * 空（カード未配置）のときの表示形式 ('dashed': 破線, 'solid': 実線・背景色あり)
+     */
+    emptyVariant?: "dashed" | "solid";
 };
 
 /**
@@ -92,6 +96,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
             style,
             isDropTarget = false,
             isGhost = false,
+            emptyVariant = "dashed",
         },
         ref
     ) {
@@ -112,7 +117,9 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
 
         if (isEmpty) {
             appearanceStyle =
-                "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
+                emptyVariant === "solid"
+                    ? "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)]"
+                    : "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
         }
 
         if (isDropTarget) {
@@ -123,7 +130,8 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
                 "bg-[#d9d9d9]/35 border border-dashed border-[#999] opacity-40 shadow-none";
         }
 
-        const baseStyle = `relative flex items-center justify-center w-48 h-[50px] rounded-[6px] font-serif ${fontSizeStyle} font-medium tracking-wider select-none transition-all duration-150`;
+        const widthStyle = /\bw-[^\s]+/.test(className) ? "" : "w-48";
+        const baseStyle = `relative flex items-center justify-center ${widthStyle} h-[50px] rounded-[6px] font-serif ${fontSizeStyle} font-medium tracking-wider select-none transition-all duration-150`;
 
         const interactiveStyle =
             !disabled && (onClick || onPointerDown)
