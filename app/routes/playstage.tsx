@@ -1020,6 +1020,13 @@ export default function PlayStage(props?: Partial<Stage>) {
   const laneGapClass =
     laneCount === 1 ? "" : laneCount === 2 ? "gap-3" : "gap-2 sm:gap-2.5";
 
+  const getTrayCardWidthClass = (card: Card) => {
+    const cardLaneSpan = getCardLaneSpan(card, laneCount);
+    if (cardLaneSpan === laneCount) return totalGridWidthClass;
+    if (cardLaneSpan === 1) return laneWidthClass;
+    return "w-[196px] sm:w-[227px]";
+  };
+
   return (
     <main
       key={stageNumber}
@@ -1383,14 +1390,10 @@ export default function PlayStage(props?: Partial<Stage>) {
         <div className="flex flex-col items-center">
           {/* 白いカードコンテナ */}
           <div className="bg-[#fdfcf9] rounded-2xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-black/[0.03]">
-            <div className="flex flex-col gap-3.5">
+            <div className={`flex flex-col gap-3.5 ${totalGridWidthClass}`}>
               {traySlots.map((item, index) => {
                 if (!item) {
-                  return (
-                    <div key={`empty-${index}`}>
-                      <OperationTile className="w-44 sm:w-48" />
-                    </div>
-                  );
+                  return <OperationTile key={`empty-${index}`} className="w-full" />;
                 }
 
                 const isPlaced = isCardPlaced(item.originalIndex);
@@ -1401,12 +1404,12 @@ export default function PlayStage(props?: Partial<Stage>) {
                 return (
                   <div
                     key={`tray-${item.originalIndex}`}
-                    ref={(el) => {
-                      trayItemRefs.current[item.originalIndex] = el;
-                    }}
-                    className="relative touch-none"
+                    className="relative flex w-full touch-none justify-start"
                   >
                     <OperationTile
+                      ref={(el) => {
+                        trayItemRefs.current[item.originalIndex] = el;
+                      }}
                       card={item.card}
                       disabled={isPlaced}
                       isGhost={isTrayDragging || isPlaced}
@@ -1423,7 +1426,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                             )
                           : undefined
                       }
-                      className={`w-44 sm:w-48 ${isPlaced
+                      className={`${getTrayCardWidthClass(item.card)} ${isPlaced
                         ? "opacity-30 cursor-not-allowed"
                         : "cursor-grab active:cursor-grabbing hover:brightness-95"
                         }`}
