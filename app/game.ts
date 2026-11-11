@@ -218,18 +218,24 @@ export function ratio3(
 }
 
 // 順番だけ変えて小さい順に並べる関数。
+export function sortAsc(a: number, b: number): StepResult<[number, number]>;
 export function sortAsc(
   a: number,
-  b: number
-): StepResult<[smaller: number, larger: number]> {
-  if (!Number.isFinite(a) || !Number.isFinite(b)) {
-    return {
-      success: false,
-      reason: "数値の比較には有限の数値が必要です。",
-    };
+  b: number,
+  c: number
+): StepResult<[number, number, number]>;
+export function sortAsc(...numbers: number[]): StepResult<number[]> {
+  for (const n of numbers) {
+    if (!Number.isFinite(n)) {
+      return {
+        success: false,
+        reason: "数値の比較には有限の数値が必要です。",
+      };
+    }
   }
 
-  return { success: true, value: a <= b ? [a, b] : [b, a] };
+  const sorted = [...numbers].sort((x, y) => x - y);
+  return { success: true, value: sorted };
 }
 
 // 1入力1出力のカードを適用して、計算結果を返す関数。
@@ -334,20 +340,41 @@ export function applyTernaryCard(
   switch (card.type) {
     case "ratio3":
       return ratio3(a, b, c);
+    case "sortAsc":
+      return sortAsc(a, b, c);
   }
 }
 
 // 汎用カード適用関数 (入力配列の長さとカード種別に応じた演算を適用)
 export function applyCard(
   inputs: readonly number[],
-  card: Card
+  card: Card,
+  targetLane?: number
 ): StepResult<number[]> {
-  if (inputs.length === 1 && isUnaryCard(card)) {
-    const res = applyUnaryCard(inputs[0], card);
+  if (isUnaryCard(card)) {
+    if (inputs.length === 1) {
+      const res = applyUnaryCard(inputs[0], card);
+      if (!res.success) {
+        return res;
+      }
+      return { success: true, value: [res.value] };
+    }
+
+    const lane = targetLane ?? 0;
+    if (lane < 0 || lane >= inputs.length) {
+      return {
+        success: false,
+        reason: `指定されたレーン ${lane} が範囲外です。`,
+      };
+    }
+
+    const res = applyUnaryCard(inputs[lane], card);
     if (!res.success) {
       return res;
     }
-    return { success: true, value: [res.value] };
+    const next = [...inputs];
+    next[lane] = res.value;
+    return { success: true, value: next };
   }
 
   if (inputs.length === 2 && isBinaryCard(card)) {
@@ -395,7 +422,7 @@ export function isBinaryCard(card: Card): card is BinaryCard {
 }
 
 export function isTernaryCard(card: Card): card is TernaryCard {
-  return card.type === "ratio3";
+  return card.type === "ratio3" || card.type === "sortAsc";
 }
 
 // 配列で与えられた複数の数値の平均を計算する関数。
@@ -443,10 +470,14 @@ export type CalculateFailure = {
 // 実行結果を表す型（成功 または 擬似エラー画面用情報）
 export type ExecutionResult = CalculateSuccess | CalculateFailure;
 
+export type CardStep =
+  | Card
+  | { card: Card; targetLane?: number };
+
 // 初期値群に対して順序付けられたカード配列を順次適用し、最終数値配列と最終スコア(平均)、または疑似エラー画面用データを返す関数。
 export function calculateResult(
   startNums: readonly number[],
-  orderedCards: readonly Card[]
+  orderedCards: readonly CardStep[]
 ): ExecutionResult {
   if (startNums.length === 0 || startNums.length > 3) {
     return {
@@ -461,8 +492,10 @@ export function calculateResult(
   let current = [...startNums];
 
   for (let i = 0; i < orderedCards.length; i += 1) {
-    const card = orderedCards[i];
-    const step = applyCard(current, card);
+    const stepItem = orderedCards[i];
+    const card = "type" in stepItem ? stepItem : stepItem.card;
+    const targetLane = "targetLane" in stepItem ? stepItem.targetLane : undefined;
+    const step = applyCard(current, card, targetLane);
 
     if (!step.success) {
       return {

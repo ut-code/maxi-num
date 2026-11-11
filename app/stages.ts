@@ -17,7 +17,8 @@ export type BinaryCard =
 
 // 3入力3出力のカード
 export type TernaryCard =
-  | { type: "ratio3" };
+  | { type: "ratio3" }
+  | { type: "sortAsc" };
 
 export type Card = UnaryCard | BinaryCard | TernaryCard;
 

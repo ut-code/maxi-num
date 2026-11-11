@@ -1,4 +1,4 @@
-import { calculateResult } from "./game";
+import { calculateResult, isUnaryCard, type CardStep } from "./game";
 import type { Card, Stage } from "./stages";
 
 // 上位何%以内なら何個の星か
@@ -37,15 +37,41 @@ export function arrangements<T>(items: readonly T[]): T[][] {
   ];
 }
 
+// 1つのカード並びに対して、UnaryCardのレーン割り当てを展開する
+function expandCardSteps(order: Card[], laneCount: number): CardStep[][] {
+  if (order.length === 0) return [[]];
+  const [first, ...rest] = order;
+  const restExpanded = expandCardSteps(rest, laneCount);
+
+  if (isUnaryCard(first) && laneCount > 1) {
+    const results: CardStep[][] = [];
+    for (let lane = 0; lane < laneCount; lane++) {
+      for (const r of restExpanded) {
+        results.push([{ card: first, targetLane: lane }, ...r]);
+      }
+    }
+    return results;
+  }
+
+  return restExpanded.map((r) => [first, ...r]);
+}
+
 // 並べ方ごとの計算結果を、重複を除いて大きい順に並べる関数。
 // 0で割るなど計算できない並べ方は除く。
 function resultsOf(stage: Stage, orders: Card[][]): number[] {
   const results = new Set<number>();
+  const laneCount = stage.startNums.length;
   for (const order of orders) {
-    try {
-      results.add(calculateResult(stage.startNum, order));
-    } catch {
-      continue;
+    const expandedSteps = expandCardSteps(order, laneCount);
+    for (const steps of expandedSteps) {
+      try {
+        const res = calculateResult(stage.startNums, steps);
+        if (res.success) {
+          results.add(res.score);
+        }
+      } catch {
+        continue;
+      }
     }
   }
   return [...results].sort((a, b) => b - a);

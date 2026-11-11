@@ -43,6 +43,10 @@ export type OperationTileProps = {
      * ゴースト状態（ドラッグ中の元位置プレースホルダーなど）
      */
     isGhost?: boolean;
+    /**
+     * 空（カード未配置）のときの表示形式 ('dashed': 破線, 'solid': 実線・背景色あり)
+     */
+    emptyVariant?: "dashed" | "solid";
 };
 
 /**
@@ -64,6 +68,16 @@ export function formatOperationCard(card: Card): string {
             return "反転する";
         case "divisorCount":
             return "約数する";
+        case "divmod":
+            return "商と余り";
+        case "gcdLcm":
+            return "最大公約数と最小公倍数";
+        case "ratio":
+            return "比にする";
+        case "sortAsc":
+            return "小さい順に並べる";
+        case "ratio3":
+            return "3数の比にする";
         default: {
             const _exhaustiveCheck: never = card;
             return "";
@@ -82,6 +96,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
             style,
             isDropTarget = false,
             isGhost = false,
+            emptyVariant = "dashed",
         },
         ref
     ) {
@@ -89,18 +104,22 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         let content: React.ReactNode = card ? formatOperationCard(card) : null;
         const isEmpty = content === null;
         const fontSizeStyle =
-            typeof content === "string" && content.length > 6
-                ? "text-base sm:text-lg px-2 text-center whitespace-nowrap"
-                : typeof content === "string" && content.length > 4
-                    ? "text-xl px-2 text-center"
-                    : "text-2xl";
+            typeof content === "string" && content.length > 10
+                ? "text-xs sm:text-sm px-1 text-center leading-tight"
+                : typeof content === "string" && content.length > 6
+                    ? "text-base sm:text-lg px-2 text-center"
+                    : typeof content === "string" && content.length > 4
+                        ? "text-xl px-2 text-center"
+                        : "text-2xl";
 
         let appearanceStyle =
             "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)]";
 
         if (isEmpty) {
             appearanceStyle =
-                "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
+                emptyVariant === "solid"
+                    ? "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[inset_0_3px_6px_rgba(0,0,0,0.2)]"
+                    : "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
         }
 
         if (isDropTarget) {
@@ -111,7 +130,8 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
                 "bg-[#d9d9d9]/35 border border-dashed border-[#999] opacity-40 shadow-none";
         }
 
-        const baseStyle = `relative flex items-center justify-center w-48 h-[50px] rounded-[6px] font-serif ${fontSizeStyle} font-medium tracking-wider select-none transition-all duration-150`;
+        const widthStyle = /\bw-[^\s]+/.test(className) ? "" : "w-48";
+        const baseStyle = `relative flex items-center justify-center ${widthStyle} h-[50px] rounded-[6px] font-serif ${fontSizeStyle} font-medium tracking-wider select-none transition-all duration-150`;
 
         const interactiveStyle =
             !disabled && (onClick || onPointerDown)
