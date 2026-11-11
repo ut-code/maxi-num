@@ -28,9 +28,16 @@ export type StartNumbers =
   | [number, number]
   | [number, number, number];
 
+export type FixedCard = {
+  card: Card;
+  row: number; // 0〜3（SLOT_COUNT-1）
+  lane?: number; // UnaryCardの場合はレーン番号（0〜laneCount-1）。省略時は0。ワイドカードの場合はstartLane
+};
+
 export type Stage = {
   startNums: StartNumbers;
   cards: Card[];
+  fixedCards?: FixedCard[];
 };
 
 export const STAGES: Stage[] = [
@@ -54,6 +61,27 @@ export const STAGES: Stage[] = [
     cards: [
       { type: "sortAsc" },
       { type: "plus", value: 1 },
+    ],
+  },
+  {
+    // 固定カードのあるステージの例
+    startNums: [8, 12],
+    fixedCards: [
+      {
+        card: { type: "multiply", value: 2 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "plus", value: 5 },
+        row: 2,
+        lane: 1,
+      },
+    ],
+    cards: [
+      { type: "ratio" },
+      { type: "plus", value: 3 },
+      { type: "minus", value: 1 },
     ],
   },
 ];
