@@ -118,7 +118,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         if (isEmpty) {
             appearanceStyle =
                 emptyVariant === "solid"
-                    ? "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)]"
+                    ? "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[inset_0_3px_6px_rgba(0,0,0,0.2)]"
                     : "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
         }
 
