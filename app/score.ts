@@ -56,16 +56,59 @@ function expandCardSteps(order: Card[], laneCount: number): CardStep[][] {
   return restExpanded.map((r) => [first, ...r]);
 }
 
-// 並べ方ごとの計算結果を、重複を除いて大きい順に並べる関数。
-// 0で割るなど計算できない並べ方は除く。
-function resultsOf(stage: Stage, orders: Card[][]): number[] {
+// 固定カードを考慮して空きスロットに行番号順に手札カードを挿入して実行結果をシミュレート
+function resultsWithFixedCards(stage: Stage, orders: Card[][]): number[] {
   const results = new Set<number>();
   const laneCount = stage.startNums.length;
+  const fixedCards = stage.fixedCards ?? [];
+
+  // 固定カードがない場合は通常の展開
+  if (fixedCards.length === 0) {
+    for (const order of orders) {
+      const expandedSteps = expandCardSteps(order, laneCount);
+      for (const steps of expandedSteps) {
+        try {
+          const res = calculateResult(stage.startNums, steps);
+          if (res.success) {
+            results.add(res.score);
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+    return [...results].sort((a, b) => b - a);
+  }
+
+  // 固定カードがある場合：スロット行(0〜3)の空いている場所を手札カードで埋めるパターンを試す
+  const SLOT_COUNT = 4;
+  // 各行に固定カードがあるか判定
+  const fixedByRow = new Map<number, CardStep[]>();
+  for (const fc of fixedCards) {
+    const list = fixedByRow.get(fc.row) ?? [];
+    list.push({ card: fc.card, targetLane: fc.lane ?? 0 });
+    fixedByRow.set(fc.row, list);
+  }
+
+  // 利用可能な空き行インデックス（0〜3のうち手札カードを配置できる行）
+  // 簡略化して、固定カードのステップと手札カードのステップを組み合わせる
   for (const order of orders) {
     const expandedSteps = expandCardSteps(order, laneCount);
-    for (const steps of expandedSteps) {
+    for (const playerSteps of expandedSteps) {
+      // playerSteps と fixedCards を行スロットに配置
+      // playerStepsの長さが残りの空き行数以下である場合に配置可能
+      const totalSteps: CardStep[] = [];
+      let playerStepIdx = 0;
+      for (let r = 0; r < SLOT_COUNT; r++) {
+        if (fixedByRow.has(r)) {
+          totalSteps.push(...fixedByRow.get(r)!);
+        } else if (playerStepIdx < playerSteps.length) {
+          totalSteps.push(playerSteps[playerStepIdx]);
+          playerStepIdx += 1;
+        }
+      }
       try {
-        const res = calculateResult(stage.startNums, steps);
+        const res = calculateResult(stage.startNums, totalSteps);
         if (res.success) {
           results.add(res.score);
         }
@@ -74,7 +117,14 @@ function resultsOf(stage: Stage, orders: Card[][]): number[] {
       }
     }
   }
+
   return [...results].sort((a, b) => b - a);
+}
+
+// 並べ方ごとの計算結果を、重複を除いて大きい順に並べる関数。
+// 0で割るなど計算できない並べ方は除く。
+function resultsOf(stage: Stage, orders: Card[][]): number[] {
+  return resultsWithFixedCards(stage, orders);
 }
 
 // カードをすべて使ったときに起こりうる計算結果。星の数の基準にする

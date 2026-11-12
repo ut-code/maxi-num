@@ -47,6 +47,10 @@ export type OperationTileProps = {
      * 空（カード未配置）のときの表示形式 ('dashed': 破線, 'solid': 実線・背景色あり)
      */
     emptyVariant?: "dashed" | "solid";
+    /**
+     * 固定カード（移動不可）かどうか
+     */
+    isFixed?: boolean;
 };
 
 /**
@@ -97,6 +101,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
             isDropTarget = false,
             isGhost = false,
             emptyVariant = "dashed",
+            isFixed = false,
         },
         ref
     ) {
@@ -120,6 +125,11 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
                 emptyVariant === "solid"
                     ? "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[inset_0_3px_6px_rgba(0,0,0,0.2)]"
                     : "bg-[#e8e6df]/45 border border-dashed border-[#b8b5ad] shadow-none";
+        }
+
+        if (isFixed) {
+            appearanceStyle =
+                "bg-[#c8c5bc] border-2 border-[#5c5a55] text-[#1f1e1d] shadow-[0_3px_6px_rgba(0,0,0,0.2)]";
         }
 
         if (isDropTarget) {
@@ -150,6 +160,22 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
                 style={style}
                 className={`${baseStyle} ${appearanceStyle} ${interactiveStyle} ${disabledStyle} ${className}`}
             >
+                {/* 固定カード用のピン・ロックアイコンバッジ */}
+                {isFixed && (
+                    <span
+                        className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#5c5a55] text-white shadow-sm"
+                        title="固定カード"
+                        aria-label="固定カード"
+                    >
+                        <svg
+                            className="h-2.5 w-2.5"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                        >
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
+                        </svg>
+                    </span>
+                )}
                 {content}
             </div>
         );

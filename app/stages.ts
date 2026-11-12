@@ -28,9 +28,16 @@ export type StartNumbers =
   | [number, number]
   | [number, number, number];
 
+export type FixedCard = {
+  card: Card;
+  row: number; // 0〜3（SLOT_COUNT-1）
+  lane?: number; // UnaryCardの場合はレーン番号（0〜laneCount-1）。省略時は0。ワイドカードの場合はstartLane
+};
+
 export type Stage = {
   startNums: StartNumbers;
   cards: Card[];
+  fixedCards?: FixedCard[];
 };
 
 export const STAGES: Stage[] = [
@@ -54,6 +61,85 @@ export const STAGES: Stage[] = [
     cards: [
       { type: "sortAsc" },
       { type: "plus", value: 1 },
+    ],
+  },
+  {
+    // 固定カードのあるステージの例
+    startNums: [8, 12],
+    fixedCards: [
+      {
+        card: { type: "multiply", value: 2 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "plus", value: 5 },
+        row: 2,
+        lane: 1,
+      },
+    ],
+    cards: [
+      { type: "ratio" },
+      { type: "plus", value: 3 },
+      { type: "minus", value: 1 },
+    ],
+  },
+  {
+    startNums: [12, 18],
+    fixedCards: [
+      {
+        card: { type: "minus", value: 20 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "divide", value: 5 },
+        row: 3,
+        lane: 1,
+      },
+    ],
+    cards: [
+      { type: "gcdLcm" },
+      { type: "ratio" },
+      { type: "multiply", value: 2 },
+      { type: "plus", value: 4 },
+      { type: "backwards" },
+      { type: "minus", value: 1 },
+      { type: "backwards" },
+      { type: "plus", value: 3 },
+      { type: "multiply", value: 5 }
+    ],
+  },
+  {
+    startNums: [18, 42, 60],
+    fixedCards: [
+      {
+        card: { type: "minus", value: 20 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "divisorCount" },
+        row: 1,
+        lane: 1,
+      },
+        {
+        card: { type: "divide", value: 7 },
+        row: 1,
+        lane: 2,
+      },
+    ],
+    cards: [
+      { type: "ratio3" },
+      { type: "sortAsc" },
+      { type: "divisorCount" },
+      { type: "multiply", value: 6 },
+      { type: "multiply", value: 3 },
+      { type: "plus", value: 7 },
+      { type: "mod", value: 9 },
+      { type: "ratio3" },
+      { type: "divisorCount" },
+      { type: "backwards" }
     ],
   },
 ];

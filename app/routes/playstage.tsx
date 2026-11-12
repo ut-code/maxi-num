@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useParams } from "react-router";
-import { STAGES, type Card, type Stage } from "~/stages";
+import { STAGES, type Card, type Stage, type FixedCard } from "~/stages";
 import {
   applyCard,
   applyUnaryCard,
@@ -39,6 +39,7 @@ type WideCardPlacement = {
   originalIndex: number;
   startLane: number;
   laneSpan: number;
+  isFixed?: boolean;
 };
 
 // 各行の1レーンカードと複数レーンカードの配置
@@ -96,6 +97,8 @@ type MovingToken = {
   isError?: boolean;
 };
 
+const EMPTY_FIXED_CARDS: FixedCard[] = [];
+
 export default function PlayStage(props?: Partial<Stage>) {
   const params = useParams();
   const routeStageNumber = params.id ? parseInt(params.id, 10) : 1;
@@ -108,8 +111,17 @@ export default function PlayStage(props?: Partial<Stage>) {
     () => ({
       startNums: props?.startNums ?? currentStage.startNums,
       cards: props?.cards ?? currentStage.cards,
+      fixedCards:
+        props?.fixedCards ?? currentStage.fixedCards ?? EMPTY_FIXED_CARDS,
     }),
-    [props?.startNums, props?.cards, currentStage.startNums, currentStage.cards]
+    [
+      props?.startNums,
+      props?.cards,
+      props?.fixedCards,
+      currentStage.startNums,
+      currentStage.cards,
+      currentStage.fixedCards,
+    ]
   );
 
   const laneCount = stage.startNums.length;
@@ -118,14 +130,41 @@ export default function PlayStage(props?: Partial<Stage>) {
   // トレイの最低スロット数（5スロット）
   const MIN_TRAY_COUNT = 5;
 
+  // 固定カードのインデックスマップ (key: negative index -> FixedCard)
+  const fixedCardsList = stage.fixedCards;
+
   const createInitialRows = useCallback(
-    (lanes: number): RowSlotState[] =>
-      Array.from({ length: SLOT_COUNT }, () => ({
+    (lanes: number): RowSlotState[] => {
+      const rows: RowSlotState[] = Array.from({ length: SLOT_COUNT }, () => ({
         type: "lanes",
         cols: Array.from({ length: lanes }, () => null),
         wideCards: [],
-      })),
-    [SLOT_COUNT]
+      }));
+
+      fixedCardsList.forEach((fc, idx) => {
+        const row = fc.row;
+        if (row < 0 || row >= SLOT_COUNT) return;
+        const fakeIndex = -(idx + 1);
+        const cardLaneSpan = getCardLaneSpan(fc.card, lanes);
+        if (cardLaneSpan === 1) {
+          const lane = fc.lane ?? 0;
+          if (lane >= 0 && lane < lanes) {
+            rows[row].cols[lane] = fakeIndex;
+          }
+        } else {
+          const startLane = Math.min(fc.lane ?? 0, lanes - cardLaneSpan);
+          rows[row].wideCards.push({
+            originalIndex: fakeIndex,
+            startLane,
+            laneSpan: cardLaneSpan,
+            isFixed: true,
+          });
+        }
+      });
+
+      return rows;
+    },
+    [SLOT_COUNT, fixedCardsList]
   );
 
   // 左側のスロット行状態
@@ -194,6 +233,18 @@ export default function PlayStage(props?: Partial<Stage>) {
   }, [stageNumber, stage.startNums, createInitialRows, 0]);
 
   const stageCards = stage.cards;
+
+  // インデックスからカードを取得（正の数はトレイのカード、負の数は固定カード）
+  const getCardByIndex = useCallback(
+    (index: number): Card | undefined => {
+      if (index >= 0) {
+        return stageCards[index];
+      }
+      const fixedIdx = -index - 1;
+      return fixedCardsList[fixedIdx]?.card;
+    },
+    [stageCards, fixedCardsList]
+  );
 
   // トレイ用のカードリスト
   const traySlots = useMemo(() => {
@@ -494,7 +545,8 @@ export default function PlayStage(props?: Partial<Stage>) {
           });
 
           if (hitTarget.type === "wide") {
-            const card = stageCards[cardIndex];
+            const card = getCardByIndex(cardIndex);
+            if (!card) return next;
             const laneSpan = getCardLaneSpan(card, laneCount);
             next[hitTarget.row].wideCards.push({
               originalIndex: cardIndex,
@@ -742,7 +794,8 @@ export default function PlayStage(props?: Partial<Stage>) {
 
       try {
         for (const placement of rowState.wideCards) {
-          const card = stageCards[placement.originalIndex];
+          const card = getCardByIndex(placement.originalIndex);
+          if (!card) continue;
           const inputs = currentVals.slice(
             placement.startLane,
             placement.startLane + placement.laneSpan
@@ -761,8 +814,8 @@ export default function PlayStage(props?: Partial<Stage>) {
           for (let c = 0; c < laneCount; c++) {
             const cardIndex = rowState.cols[c];
             if (cardIndex === null) continue;
-            const card = stageCards[cardIndex];
-            if (!isUnaryCard(card)) continue;
+            const card = getCardByIndex(cardIndex);
+            if (!card || !isUnaryCard(card)) continue;
 
             const result = applyUnaryCard(currentVals[c], card);
             if (!result.success) {
@@ -968,14 +1021,18 @@ export default function PlayStage(props?: Partial<Stage>) {
       }
 
       // 6. スコア表示
-      // すべてのカードが配置されたか
+      // すべての手札カードが配置されたか
       const placedSet = new Set<number>();
       for (const row of placedRows) {
         for (const placement of row.wideCards) {
-          placedSet.add(placement.originalIndex);
+          if (placement.originalIndex >= 0) {
+            placedSet.add(placement.originalIndex);
+          }
         }
         for (const idx of row.cols) {
-          if (idx !== null) placedSet.add(idx);
+          if (idx !== null && idx >= 0) {
+            placedSet.add(idx);
+          }
         }
       }
       const usedAllCards = placedSet.size === stageCards.length;
@@ -1154,7 +1211,8 @@ export default function PlayStage(props?: Partial<Stage>) {
                   {Array.from({ length: laneCount }).map((_, colIdx) => {
                     const cardIndex = rowState.cols[colIdx];
                     const card =
-                      cardIndex !== null ? stageCards[cardIndex] : undefined;
+                      cardIndex !== null ? getCardByIndex(cardIndex) : undefined;
+                    const isFixed = cardIndex !== null && cardIndex < 0;
                     const coveringWideCard = rowState.wideCards.some(
                       (placement) =>
                         colIdx >= placement.startLane &&
@@ -1199,11 +1257,12 @@ export default function PlayStage(props?: Partial<Stage>) {
                           emptyVariant="solid"
                           isDropTarget={isDropTarget}
                           isGhost={isSlotDragging}
+                          isFixed={isFixed}
                           style={{
                             visibility: coveringWideCard ? "hidden" : undefined,
                           }}
                           onPointerDown={
-                            card && !isExecuting
+                            card && !isFixed && !isExecuting
                               ? (e) =>
                                 handlePointerDown(
                                   e,
@@ -1213,7 +1272,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                               : undefined
                           }
                           onClick={
-                            card && !isExecuting
+                            card && !isFixed && !isExecuting
                               ? () =>
                                 handleRemoveSlot({
                                   type: "lane",
@@ -1225,7 +1284,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                           className={`w-full ${laneWidthClass} transition-all duration-150 ${isCellActive && !coveringWideCard
                             ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
                             : ""
-                            } ${card && !isExecuting
+                            } ${card && !isFixed && !isExecuting
                               ? "cursor-grab active:cursor-grabbing hover:brightness-95"
                               : ""
                             }`}
@@ -1240,7 +1299,8 @@ export default function PlayStage(props?: Partial<Stage>) {
                     }}
                   >
                     {rowState.wideCards.map((placement) => {
-                      const card = stageCards[placement.originalIndex];
+                      const card = getCardByIndex(placement.originalIndex);
+                      const isFixed = placement.isFixed || placement.originalIndex < 0;
                       const isSlotDragging =
                         dragState?.source.type === "slotWide" &&
                         dragState.source.row === rowIdx &&
@@ -1261,8 +1321,9 @@ export default function PlayStage(props?: Partial<Stage>) {
                           emptyVariant="solid"
                           isDropTarget={isDropTarget}
                           isGhost={isSlotDragging}
+                          isFixed={isFixed}
                           onPointerDown={
-                            !isExecuting
+                            !isFixed && !isExecuting && card
                               ? (e) =>
                                 handlePointerDown(
                                   e,
@@ -1276,7 +1337,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                               : undefined
                           }
                           onClick={
-                            !isExecuting
+                            !isFixed && !isExecuting
                               ? () =>
                                 handleRemoveSlot({
                                   type: "wide",
@@ -1288,7 +1349,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                           className={`pointer-events-auto w-full transition-all duration-150 ${isRowActive && isCardActive
                             ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
                             : ""
-                            } ${!isExecuting
+                            } ${!isFixed && !isExecuting
                               ? "cursor-grab active:cursor-grabbing hover:brightness-95"
                               : ""
                             }`}
