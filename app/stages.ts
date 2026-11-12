@@ -84,4 +84,62 @@ export const STAGES: Stage[] = [
       { type: "minus", value: 1 },
     ],
   },
+  {
+    startNums: [12, 18],
+    fixedCards: [
+      {
+        card: { type: "minus", value: 20 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "divide", value: 5 },
+        row: 3,
+        lane: 1,
+      },
+    ],
+    cards: [
+      { type: "gcdLcm" },
+      { type: "ratio" },
+      { type: "multiply", value: 2 },
+      { type: "plus", value: 4 },
+      { type: "backwards" },
+      { type: "minus", value: 1 },
+      { type: "backwards" },
+      { type: "plus", value: 3 },
+      { type: "multiply", value: 5 }
+    ],
+  },
+  {
+    startNums: [18, 42, 60],
+    fixedCards: [
+      {
+        card: { type: "minus", value: 20 },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "divisorCount" },
+        row: 1,
+        lane: 1,
+      },
+        {
+        card: { type: "divide", value: 7 },
+        row: 1,
+        lane: 2,
+      },
+    ],
+    cards: [
+      { type: "ratio3" },
+      { type: "sortAsc" },
+      { type: "divisorCount" },
+      { type: "multiply", value: 6 },
+      { type: "multiply", value: 3 },
+      { type: "plus", value: 7 },
+      { type: "mod", value: 9 },
+      { type: "ratio3" },
+      { type: "divisorCount" },
+      { type: "backwards" }
+    ],
+  },
 ];

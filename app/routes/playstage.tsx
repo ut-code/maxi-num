@@ -97,6 +97,8 @@ type MovingToken = {
   isError?: boolean;
 };
 
+const EMPTY_FIXED_CARDS: FixedCard[] = [];
+
 export default function PlayStage(props?: Partial<Stage>) {
   const params = useParams();
   const routeStageNumber = params.id ? parseInt(params.id, 10) : 1;
@@ -109,7 +111,8 @@ export default function PlayStage(props?: Partial<Stage>) {
     () => ({
       startNums: props?.startNums ?? currentStage.startNums,
       cards: props?.cards ?? currentStage.cards,
-      fixedCards: props?.fixedCards ?? currentStage.fixedCards,
+      fixedCards:
+        props?.fixedCards ?? currentStage.fixedCards ?? EMPTY_FIXED_CARDS,
     }),
     [
       props?.startNums,
@@ -128,7 +131,7 @@ export default function PlayStage(props?: Partial<Stage>) {
   const MIN_TRAY_COUNT = 5;
 
   // 固定カードのインデックスマップ (key: negative index -> FixedCard)
-  const fixedCardsList = stage.fixedCards ?? [];
+  const fixedCardsList = stage.fixedCards;
 
   const createInitialRows = useCallback(
     (lanes: number): RowSlotState[] => {
