@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "komabasai-b",
-  "main": "./build/server/index.js",
+  "name": "maxi-num",
+  "main": "./workers/app.ts",
   "compatibility_date": "2026-11-13",
   "assets": {
     "directory": "./build/client"
