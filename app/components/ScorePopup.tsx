@@ -8,8 +8,10 @@ export type ScorePopupProps = {
   stageNumber: number;
   // プレイヤーが並べた順にすべての演算をした結果
   result: number;
-  // 手札のカードをすべて使ったか。使っていなければ星0になる
+  // ランキングに登録する結果が全カード使用時の結果かを検証するために使う
   usedAllCards: boolean;
+  // 4つのスロット行すべてにカードがあるか。空きがあれば星0になる
+  filledAllSlots: boolean;
   // ×ボタン（またはEsc）で呼ばれる。ゲーム画面側でポップアップを消して、プレイした盤面を見られるようにする
   onClose: () => void;
 };
@@ -43,11 +45,17 @@ function Stars({ count, size }: { count: number; size: number }) {
   );
 }
 
-export function ScorePopup({ stageNumber, result, usedAllCards, onClose }: ScorePopupProps) {
+export function ScorePopup({
+  stageNumber,
+  result,
+  usedAllCards,
+  filledAllSlots,
+  onClose,
+}: ScorePopupProps) {
   // 全パターンを計算するので、送信中などの再描画のたびに計算し直さないようにする
   const stars = useMemo(
-    () => calculateStars(STAGES[stageNumber - 1], result, usedAllCards),
-    [stageNumber, result, usedAllCards]
+    () => calculateStars(STAGES[stageNumber - 1], result, filledAllSlots),
+    [stageNumber, result, filledAllSlots]
   );
   const hasNextStage = stageNumber < STAGES.length;
 
@@ -118,6 +126,7 @@ export function ScorePopup({ stageNumber, result, usedAllCards, onClose }: Score
               <input type="hidden" name="stage" value={stageNumber} />
               <input type="hidden" name="result" value={result} />
               <input type="hidden" name="usedAllCards" value={String(usedAllCards)} />
+              <input type="hidden" name="filledAllSlots" value={String(filledAllSlots)} />
               <label className="flex flex-col">
                 <span className="absolute top-1 left-5 text-[10px] text-[#6b6b6b]">
                   名前

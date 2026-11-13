@@ -195,6 +195,7 @@ export default function PlayStage(props?: Partial<Stage>) {
     stageNumber: number;
     result: number;
     usedAllCards: boolean;
+    filledAllSlots: boolean;
   } | null>(null);
 
   // 移動する数字トークンのアニメーション状態
@@ -1036,11 +1037,15 @@ export default function PlayStage(props?: Partial<Stage>) {
         }
       }
       const usedAllCards = placedSet.size === stageCards.length;
+      const filledAllSlots = placedRows.every(
+        (row) => row.wideCards.length > 0 || row.cols.some((idx) => idx !== null)
+      );
 
       setScore({
         stageNumber: scoreStageNumber,
         result: avgScore,
         usedAllCards,
+        filledAllSlots,
       });
     }
 
@@ -1561,6 +1566,7 @@ export default function PlayStage(props?: Partial<Stage>) {
           stageNumber={score.stageNumber}
           result={score.result}
           usedAllCards={score.usedAllCards}
+          filledAllSlots={score.filledAllSlots}
           onClose={() => setScore(null)}
         />
       )}
