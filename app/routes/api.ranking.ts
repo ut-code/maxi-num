@@ -77,6 +77,7 @@ export async function action({ request }: Route.ActionArgs) {
   const stageNumber = parseStageNumber(formData.get("stage"));
   const result = Number(formData.get("result"));
   const usedAllCards = formData.get("usedAllCards") === "true";
+  const filledAllSlots = formData.get("filledAllSlots") === "true";
   const name =
     String(formData.get("name") ?? "").trim().slice(0, NAME_MAX_LENGTH) || DEFAULT_NAME;
 
@@ -93,7 +94,7 @@ export async function action({ request }: Route.ActionArgs) {
   try {
     const [inserted] = await db
       .insert(scores)
-      .values({ stageNumber, name, result, stars: calculateStars(stage, result, usedAllCards) })
+      .values({ stageNumber, name, result, stars: calculateStars(stage, result, filledAllSlots) })
       .returning({ id: scores.id });
     return data<RankingResponse>(await getRanking(stageNumber, inserted.id));
   } catch (error) {

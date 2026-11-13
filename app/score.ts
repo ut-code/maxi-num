@@ -10,8 +10,9 @@ const STAR_THRESHOLDS = [
 ];
 const MAX_STARS = 3;
 const MIN_STARS = 0.5;
-// カードをすべては使っていないときの星の数
-const UNUSED_CARDS_STARS = 0;
+// すべてのスロットを埋めていないときの星の数
+const UNUSED_SLOTS_STARS = 0;
+const SLOT_COUNT = 4;
 
 // カードの並べ方をすべて列挙する関数。
 export function permutations<T>(items: readonly T[]): T[][] {
@@ -37,11 +38,15 @@ export function arrangements<T>(items: readonly T[]): T[][] {
   ];
 }
 
-// 1つのカード並びに対して、UnaryCardのレーン割り当てを展開する
-function expandCardSteps(order: Card[], laneCount: number): CardStep[][] {
-  if (order.length === 0) return [[]];
+// 1つのカード並びに対して、空きスロット数の範囲でUnaryCardのレーン割り当てを展開する
+function expandCardSteps(
+  order: Card[],
+  laneCount: number,
+  availableSlots: number = SLOT_COUNT
+): CardStep[][] {
+  if (order.length === 0 || availableSlots === 0) return [[]];
   const [first, ...rest] = order;
-  const restExpanded = expandCardSteps(rest, laneCount);
+  const restExpanded = expandCardSteps(rest, laneCount, availableSlots - 1);
 
   if (isUnaryCard(first) && laneCount > 1) {
     const results: CardStep[][] = [];
@@ -52,7 +57,6 @@ function expandCardSteps(order: Card[], laneCount: number): CardStep[][] {
     }
     return results;
   }
-
   return restExpanded.map((r) => [first, ...r]);
 }
 
@@ -66,6 +70,7 @@ function resultsWithFixedCards(stage: Stage, orders: Card[][]): number[] {
   if (fixedCards.length === 0) {
     for (const order of orders) {
       const expandedSteps = expandCardSteps(order, laneCount);
+      console.log(expandedSteps);
       for (const steps of expandedSteps) {
         try {
           const res = calculateResult(stage.startNums, steps);
@@ -81,7 +86,6 @@ function resultsWithFixedCards(stage: Stage, orders: Card[][]): number[] {
   }
 
   // 固定カードがある場合：スロット行(0〜3)の空いている場所を手札カードで埋めるパターンを試す
-  const SLOT_COUNT = 4;
   // 各行に固定カードがあるか判定
   const fixedByRow = new Map<number, CardStep[]>();
   for (const fc of fixedCards) {
@@ -90,10 +94,14 @@ function resultsWithFixedCards(stage: Stage, orders: Card[][]): number[] {
     fixedByRow.set(fc.row, list);
   }
 
+  const availableRows = Array.from({ length: SLOT_COUNT }, (_, row) => row).filter(
+    (row) => !fixedByRow.has(row)
+  );
+
   // 利用可能な空き行インデックス（0〜3のうち手札カードを配置できる行）
   // 簡略化して、固定カードのステップと手札カードのステップを組み合わせる
   for (const order of orders) {
-    const expandedSteps = expandCardSteps(order, laneCount);
+    const expandedSteps = expandCardSteps(order, laneCount, availableRows.length);
     for (const playerSteps of expandedSteps) {
       // playerSteps と fixedCards を行スロットに配置
       // playerStepsの長さが残りの空き行数以下である場合に配置可能
@@ -137,14 +145,11 @@ export function reachableResults(stage: Stage): number[] {
   return resultsOf(stage, arrangements(stage.cards));
 }
 
-// カードをすべて使っていなければ星0。
-// すべて使っていれば、計算結果が起こりうる結果の中で大きい方から何番目かによって星の数を決める。
-export function calculateStars(stage: Stage, result: number, usedAllCards: boolean): number {
-  if (!usedAllCards) return UNUSED_CARDS_STARS;
-
+// すべてのスロットを埋めていなければ星0。埋めていれば、計算結果の順位で星の数を決める。
+export function calculateStars(stage: Stage, result: number, filledAllSlots: boolean): number {
+  if (!filledAllSlots) return UNUSED_SLOTS_STARS;
   const results = possibleResults(stage);
   const rank = results.filter((value) => value > result).length + 1;
-
   if (rank === 1) return MAX_STARS;
 
   const ratio = rank / results.length;
