@@ -1,7 +1,5 @@
-import { asc, desc, eq } from "drizzle-orm";
 import { data } from "react-router";
-import { db } from "~/db/db.server";
-import { scores } from "~/db/schema";
+import { getSupabase, type SupabaseEnv } from "~/db/supabase.server";
 import { calculateStars, possibleResults, reachableResults } from "~/score";
 import { STAGES } from "~/stages";
 import type { Route } from "./+types/api.ranking";
@@ -22,6 +20,14 @@ export type RankingResponse =
   | { entries: RankingEntry[]; myEntryId: number | null; error?: undefined }
   | { error: string };
 
+type CloudflareLoadContext = Route.LoaderArgs["context"] & {
+  cloudflare: { env: SupabaseEnv };
+};
+
+function getSupabaseEnv(context: Route.LoaderArgs["context"]) {
+  return (context as CloudflareLoadContext).cloudflare.env;
+}
+
 function parseStageNumber(value: unknown) {
   const stageNumber = Number(value);
   return Number.isInteger(stageNumber) && STAGES[stageNumber - 1]
@@ -30,13 +36,20 @@ function parseStageNumber(value: unknown) {
 }
 
 // ステージのランキングを、順位をつけてすべて返す
-async function getRanking(stageNumber: number, myEntryId: number | null) {
-  const rows = await db
-    .select({ id: scores.id, name: scores.name, result: scores.result, stars: scores.stars })
-    .from(scores)
-    .where(eq(scores.stageNumber, stageNumber))
+async function getRanking(
+  env: SupabaseEnv,
+  stageNumber: number,
+  myEntryId: number | null
+) {
+  const { data: rows, error } = await getSupabase(env).from("scores").select(
+    "id,name,result,stars"
+  ).eq("stageNumber", stageNumber)
     // 星の数で並べてから、同じ星の中を数値の大きい順に並べる
-    .orderBy(desc(scores.stars), desc(scores.result), asc(scores.createdAt));
+    .order("stars", { ascending: false })
+    .order("result", { ascending: false })
+    .order("createdAt", { ascending: true });
+
+  if (error) throw error;
 
   // 星の数と数値が同じなら同じ順位にする
   let rank = 0;
@@ -57,7 +70,8 @@ async function getRanking(stageNumber: number, myEntryId: number | null) {
   return { entries, myEntryId };
 }
 
-export async function loader({ request }: Route.LoaderArgs) {
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = getSupabaseEnv(context);
   const url = new URL(request.url);
   const stageNumber = parseStageNumber(url.searchParams.get("stage"));
   if (stageNumber === null) {
@@ -65,14 +79,15 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   try {
-    return data<RankingResponse>(await getRanking(stageNumber, null));
+    return data<RankingResponse>(await getRanking(env, stageNumber, null));
   } catch (error) {
     console.error(error);
     return data<RankingResponse>({ error: "ランキングを読み込めませんでした" }, { status: 500 });
   }
 }
 
-export async function action({ request }: Route.ActionArgs) {
+export async function action({ request, context }: Route.ActionArgs) {
+  const env = getSupabaseEnv(context);
   const formData = await request.formData();
   const stageNumber = parseStageNumber(formData.get("stage"));
   const result = Number(formData.get("result"));
@@ -91,11 +106,18 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   try {
-    const [inserted] = await db
-      .insert(scores)
-      .values({ stageNumber, name, result, stars: calculateStars(stage, result, usedAllCards) })
-      .returning({ id: scores.id });
-    return data<RankingResponse>(await getRanking(stageNumber, inserted.id));
+    const { data: inserted, error } = await getSupabase(env)
+      .from("scores")
+      .insert({
+        stageNumber,
+        name,
+        result,
+        stars: calculateStars(stage, result, usedAllCards),
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return data<RankingResponse>(await getRanking(env, stageNumber, inserted.id));
   } catch (error) {
     console.error(error);
     return data<RankingResponse>({ error: "スコアを送信できませんでした" }, { status: 500 });

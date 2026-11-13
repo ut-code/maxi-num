@@ -6,6 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "react-router-serve ./build/server/index.js",
+    "deploy": "npm run build && wrangler deploy",
     "typecheck": "react-router typegen && tsc",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -24,6 +25,7 @@
     "react-router": "^8.5.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.69.1",
     "@react-router/dev": "^8.5.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22",
@@ -33,6 +35,7 @@
     "drizzle-kit": "^0.31.11",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
-    "vite": "^8.0.3"
+    "vite": "^8.0.3",
+    "wrangler": "^4.161.0"
   }
 }
