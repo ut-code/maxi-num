@@ -42,49 +42,6 @@ export type Stage = {
 
 export const STAGES: Stage[] = [
   {
-    startNums: [6],
-    cards: [
-      { type: "plus", value: 1 },
-      { type: "minus", value: 1 },
-      { type: "backwards" },
-    ],
-  },
-  {
-    startNums: [15, 18],
-    cards: [
-      { type: "ratio" },
-      { type: "plus", value: 2 },
-    ],
-  },
-  {
-    startNums: [10, 20, 5],
-    cards: [
-      { type: "sortAsc" },
-      { type: "plus", value: 1 },
-    ],
-  },
-  {
-    // 固定カードのあるステージの例
-    startNums: [8, 12],
-    fixedCards: [
-      {
-        card: { type: "multiply", value: 2 },
-        row: 1,
-        lane: 0,
-      },
-      {
-        card: { type: "plus", value: 5 },
-        row: 2,
-        lane: 1,
-      },
-    ],
-    cards: [
-      { type: "ratio" },
-      { type: "plus", value: 3 },
-      { type: "minus", value: 1 },
-    ],
-  },
-  {
     startNums: [12, 18],
     fixedCards: [
       {
@@ -140,6 +97,58 @@ export const STAGES: Stage[] = [
       { type: "ratio3" },
       { type: "divisorCount" },
       { type: "backwards" }
+    ],
+  },
+  {
+    startNums: [86],
+    cards: [
+      { type: "plus", value: 1 },
+      { type: "minus", value: 2 },
+      { type: "multiply", value: 2 },
+      { type: "backwards" },
+      { type: "backwards" },
+    ]
+  },
+  {
+    startNums: [5, 28, 78],
+    cards: [
+      { type: "plus", value: 2 },
+      { type: "multiply", value: 5 },
+      { type: "minus", value: 3 },
+      { type: "backwards" },
+      { type: "gcdLcm" },
+      { type: "gcdLcm" },
+    ] ,
+    fixedCards: [
+      {
+        card: { type: "ratio3" },
+        row: 1,
+        lane: 0,
+      },
+      {
+        card: { type: "ratio3" },
+        row: 3,
+        lane: 0,
+      },
+    ]
+  },  {
+    startNums: [6],
+    cards: [
+      { type: "plus", value: 1 },
+      { type: "minus", value: 1 },
+      { type: "multiply", value: 2 },
+      { type: "divide", value: 2 },
+    ],
+  },
+  {
+    startNums: [11111, 11],
+    cards: [
+      { type: "divmod" },
+      { type: "divmod" },
+      { type: "multiply", value: 10 },
+      { type: "multiply", value: 10 },
+      { type: "backwards" },
+      { type: "backwards" },
     ],
   },
 ];
