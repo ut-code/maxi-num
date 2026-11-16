@@ -10,6 +10,7 @@ import {
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
+import { HelpModal } from "~/components/HelpModal";
 
 export function meta() {
   return [
@@ -1115,6 +1116,10 @@ export default function PlayStage(props?: Partial<Stage>) {
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
         <StageHeader stageNumber={stageNumber} backTo="/stages" variant="corner" />
+      </div>
+
+      <div className="absolute right-3 top-3 z-20">
+        <HelpModal stage={stage} />
       </div>
 
       {/* エラーメッセージ */}
