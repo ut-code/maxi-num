@@ -65,13 +65,13 @@ export function formatOperationCard(card: Card): string {
         case "multiply":
             return `${card.value}をかける`;
         case "divide":
-            return `${card.value}で割る`;
+            return `${card.value}でわった整数部分`;
         case "mod":
-            return `${card.value}で割った余り`;
+            return `${card.value}でわった余り`;
         case "backwards":
             return "反転する";
         case "divisorCount":
-            return "約数の個数";
+            return "約数する";
         case "divmod":
             return "商と余り";
         case "gcdLcm":
@@ -79,7 +79,7 @@ export function formatOperationCard(card: Card): string {
         case "ratio":
             return "比にする";
         case "sortAsc":
-            return "左から小さい順に並べる";
+            return "小さい順に並べる";
         case "ratio3":
             return "3数の比にする";
         default: {

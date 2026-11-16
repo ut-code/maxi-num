@@ -4,7 +4,7 @@ import type { Route } from "./+types/home";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "MaxiNum" },
+    { title: "タイトル画面" },
     { name: "description", content: "ゲームのタイトル画面" },
   ];
 }
