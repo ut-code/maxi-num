@@ -459,6 +459,30 @@ export function calculateAverageScore(
   return { success: true, value: sum / numbers.length };
 }
 
+// 配列で与えられた複数の数値の合計を計算する関数。
+export function calculateTotalScore(
+  numbers: readonly number[]
+): StepResult<number> {
+  if (numbers.length === 0) {
+    return {
+      success: false,
+      reason: "数値が1つも存在しません。",
+    };
+  }
+
+  for (const num of numbers) {
+    if (!Number.isFinite(num)) {
+      return {
+        success: false,
+        reason: "有限の数値ではありません。",
+      };
+    }
+  }
+
+  const sum = numbers.reduce((acc, curr) => acc + curr, 0);
+  return { success: true, value: sum };
+}
+
 // 成功時の計算結果
 export type CalculateSuccess = {
   success: true;
@@ -484,7 +508,7 @@ export type CardStep =
   | Card
   | { card: Card; targetLane?: number };
 
-// 初期値群に対して順序付けられたカード配列を順次適用し、最終数値配列と最終スコア(平均)、または疑似エラー画面用データを返す関数。
+// 初期値群に対して順序付けられたカード配列を順次適用し、最終数値配列と最終スコア(合計)、または疑似エラー画面用データを返す関数。
 export function calculateResult(
   startNums: readonly number[],
   orderedCards: readonly CardStep[]
@@ -522,12 +546,12 @@ export function calculateResult(
     current = step.value;
   }
 
-  const avgResult = calculateAverageScore(current);
-  if (!avgResult.success) {
+  const totalResult = calculateTotalScore(current);
+  if (!totalResult.success) {
     return {
       success: false,
       error: {
-        message: avgResult.reason,
+        message: totalResult.reason,
         inputs: current,
       },
     };
@@ -536,6 +560,6 @@ export function calculateResult(
   return {
     success: true,
     finalNumbers: current,
-    score: avgResult.value,
+    score: totalResult.value,
   };
 }

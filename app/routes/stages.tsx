@@ -7,7 +7,7 @@ export const STAGE_COUNT = 6;
 const COLUMNS = 3;
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "ステージ選択" },
+    { title: "MaxiNum" },
     { name: "description", content: "ステージ選択画面" },
   ];
 }
