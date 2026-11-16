@@ -70,7 +70,12 @@ type FallingNumber = {
   acc: number;
 };
 
-export function FallingBackground() {
+export type FallingBackgroundProps = {
+  // false にすると数字を流さず、四角形だけを流すようにする
+  showNumbers?: boolean;
+};
+
+export function FallingBackground({ showNumbers = true }: FallingBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -82,6 +87,7 @@ export function FallingBackground() {
     let height = 0;
     let time = 0;
     let items: FallingNumber[] = [];
+    const numberCount = showNumbers ? NUMBER_COUNT : 0;
     const travel = () => height + 350;
     const squareSpeed = () => travel() / CYCLE;
     const squareY = (phase: number, t: number) => {
@@ -149,7 +155,7 @@ export function FallingBackground() {
       canvas!.height = height * dpr;
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       items = [];
-      for (let i = 0; i < 400 && items.length < NUMBER_COUNT; i++) {
+      for (let i = 0; i < 400 && items.length < numberCount; i++) {
         trySpawn(Math.random() * height);
       }
     }
@@ -203,7 +209,7 @@ export function FallingBackground() {
           p.value = step(p.value);
         }
       }
-      if (items.length < NUMBER_COUNT && Math.random() < 0.2) trySpawn(SPAWN_Y);
+      if (items.length < numberCount && Math.random() < 0.2) trySpawn(SPAWN_Y);
 
       draw();
       frameId = requestAnimationFrame(frame);
@@ -226,7 +232,7 @@ export function FallingBackground() {
       cancelAnimationFrame(frameId);
       observer.disconnect();
     };
-  }, []);
+  }, [showNumbers]);
 
   return (
     <canvas
