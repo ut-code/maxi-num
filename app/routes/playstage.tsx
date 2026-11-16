@@ -4,7 +4,7 @@ import { STAGES, type Card, type Stage, type FixedCard } from "~/stages";
 import {
   applyCard,
   applyUnaryCard,
-  calculateAverageScore,
+  calculateTotalScore,
   isUnaryCard,
 } from "~/game";
 import { StageHeader } from "~/components/StageHeader";
@@ -13,7 +13,7 @@ import { ScorePopup } from "~/components/ScorePopup";
 
 export function meta() {
   return [
-    { title: "プレイ画面" },
+    { title: "MaxiNum" },
     { name: "description", content: "プレイ画面" },
   ];
 }
@@ -173,15 +173,12 @@ export default function PlayStage(props?: Partial<Stage>) {
   );
 
 
-  // 出力結果表示用の平均値（初期値は0）
-  const [outputAverage, setOutputAverage] = useState<number>(() => {
-    return 0;
-  }
-  );
+  // 出力結果表示用の合計値（プレイ前は非表示）
+  const [outputTotal, setOutputTotal] = useState<number | null>(null);
   // 出力結果表示用の数値配列（アニメーション等のフォールバック用）
   const [outputNums, setOutputNums] = useState<number[]>(stage.startNums);
-  // 「平均」ボックスのハイライトフラグ
-  const [isAverageActive, setIsAverageActive] = useState(false);
+  // 「合計」ボックスのハイライトフラグ
+  const [isTotalActive, setIsTotalActive] = useState(false);
   // 実行中フラグ
   const [isExecuting, setIsExecuting] = useState(false);
   // 現在実行ハイライト中の行インデックス
@@ -224,8 +221,8 @@ export default function PlayStage(props?: Partial<Stage>) {
   useEffect(() => {
     setPlacedRows(createInitialRows(stage.startNums.length));
     setOutputNums(stage.startNums);
-    setOutputAverage(0);
-    setIsAverageActive(false);
+    setOutputTotal(null);
+    setIsTotalActive(false);
     setErrorMessage(null);
     setScore(null);
     setMovingTokens(null);
@@ -890,17 +887,17 @@ export default function PlayStage(props?: Partial<Stage>) {
     }
 
     if (!hasError) {
-      const avgScoreRes = calculateAverageScore(currentVals);
-      const avgScore = avgScoreRes.success ? avgScoreRes.value : currentVals[0];
+      const totalScoreRes = calculateTotalScore(currentVals);
+      const totalScore = totalScoreRes.success ? totalScoreRes.value : currentVals[0];
 
       if (laneCount > 1) {
-        // === 2, 3レーンの場合: 「平均」ボックスを経由して平均値を出力 ===
+        // === 2, 3レーンの場合: 「合計」ボックスを経由して合計値を出力 ===
         const avgBoxEl = averageBoxRef.current;
         const avgCenter = avgBoxEl
           ? getCenter(avgBoxEl)
           : { x: containerRect.width / 2, y: containerRect.height - 60 };
 
-        // 4a. 各トークンが「平均」ボックス内の自分の列位置へ下向き移動
+        // 4a. 各トークンが「合計」ボックス内の自分の列位置へ下向き移動
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
@@ -912,8 +909,8 @@ export default function PlayStage(props?: Partial<Stage>) {
         );
         await new Promise((r) => setTimeout(r, 220));
 
-        // 4b. 「平均」ボックスをハイライトし、全トークンが中央にマージ
-        setIsAverageActive(true);
+        // 4b. 「合計」ボックスをハイライトし、全トークンが中央にマージ
+        setIsTotalActive(true);
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
@@ -925,11 +922,11 @@ export default function PlayStage(props?: Partial<Stage>) {
         );
         await new Promise((r) => setTimeout(r, 220));
 
-        // 4c. 合体・平均値のポップ演出（1つのトークンにまとめ、ポンッと弾む）
+        // 4c. 合体・合計値のポップ演出（1つのトークンにまとめ、ポンッと弾む）
         setMovingTokens([
           {
             id: 0,
-            value: avgScore,
+            value: totalScore,
             x: avgCenter.x,
             y: avgCenter.y,
             scale: 1.35,
@@ -951,9 +948,9 @@ export default function PlayStage(props?: Partial<Stage>) {
             : null
         );
         await new Promise((r) => setTimeout(r, 160));
-        setIsAverageActive(false);
+        setIsTotalActive(false);
 
-        // 4d. 下部折れ曲がり矢印の先（出力平均値）の位置へ移動
+        // 4d. 下部折れ曲がり矢印の先（出力合計値）の位置へ移動
         const outAvgEl = outputAvgRef.current;
         const outPt = outAvgEl
           ? getCenter(outAvgEl)
@@ -973,7 +970,7 @@ export default function PlayStage(props?: Partial<Stage>) {
         await new Promise((r) => setTimeout(r, 240));
 
         // 4e. 到着：出力数字を確定し、吸い込まれるようにフェードアウト
-        setOutputAverage(avgScore);
+        setOutputTotal(totalScore);
         setOutputNums(currentVals);
         setMovingTokens((prev) =>
           prev
@@ -1006,7 +1003,7 @@ export default function PlayStage(props?: Partial<Stage>) {
         );
         await new Promise((r) => setTimeout(r, 220));
 
-        setOutputAverage(avgScore);
+        setOutputTotal(totalScore);
         setOutputNums(currentVals);
         setMovingTokens((prev) =>
           prev
@@ -1043,7 +1040,7 @@ export default function PlayStage(props?: Partial<Stage>) {
 
       setScore({
         stageNumber: scoreStageNumber,
-        result: avgScore,
+        result: totalScore,
         usedAllCards,
         filledAllSlots,
       });
@@ -1052,7 +1049,7 @@ export default function PlayStage(props?: Partial<Stage>) {
     setMovingTokens(null);
     setActiveRow(null);
     setActiveLanes([]);
-    setIsAverageActive(false);
+    setIsTotalActive(false);
     setIsExecuting(false);
   }, [
     isExecuting,
@@ -1370,24 +1367,24 @@ export default function PlayStage(props?: Partial<Stage>) {
             })}
           </div>
 
-          {/* 「平均」ボックス（2, 3レーン時に全幅で表示） */}
+          {/* 「合計」ボックス（2, 3レーン時に全幅で表示） */}
           {laneCount > 1 && (
             <div
               ref={averageBoxRef}
-              className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 my-1 ${isAverageActive
+                className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 my-1 ${isTotalActive
                 ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
                 : ""
                 }`}
             >
-              平均
+              合計
             </div>
           )}
 
-          {/* 下部フッター（下向き直角折れ曲がり矢印と平均結果数字） */}
+          {/* 下部フッター（下向き直角折れ曲がり矢印と合計結果数字） */}
           <div
             className={`relative flex items-center justify-center h-14 ${totalGridWidthClass} select-none`}
           >
-            {/* スロット/平均ボックス中央から下に降りて右折する矢印 */}
+            {/* スロット/合計ボックス中央から下に降りて右折する矢印 */}
             <div className="absolute left-1/2 top-0 -translate-x-1/2 w-0 h-full pointer-events-none overflow-visible">
               <svg className="overflow-visible" width="1" height="56">
                 {/* (0, 0) -> (0, 22) -> (42, 22) */}
@@ -1411,7 +1408,7 @@ export default function PlayStage(props?: Partial<Stage>) {
               </svg>
             </div>
 
-            {/* 出力結果数字（平均値） */}
+            {/* 出力結果数字（合計値） */}
             <span
               ref={outputAvgRef}
               className={`absolute font-serif text-2xl text-[#2d2d2d] transition-transform duration-200 pointer-events-none whitespace-nowrap ${!isExecuting ? "scale-100" : ""
@@ -1423,7 +1420,7 @@ export default function PlayStage(props?: Partial<Stage>) {
                   "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
               }}
             >
-              {formatDisplayNumber(outputAverage)}
+              {outputTotal === null ? "" : formatDisplayNumber(outputTotal)}
             </span>
           </div>
 

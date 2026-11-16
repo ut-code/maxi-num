@@ -5,7 +5,7 @@ import { SelectButton } from "~/components/SelectButton";
 export const STAGE_COUNT = STAGES.length;
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "ステージ選択" },
+    { title: "MaxiNum" },
     { name: "description", content: "ステージ選択画面" },
   ];
 }
