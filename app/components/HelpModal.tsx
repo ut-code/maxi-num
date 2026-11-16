@@ -41,7 +41,7 @@ function describeCard(card: Card): string {
 
 function CardList({ cards }: { cards: readonly Card[] }) {
   if (cards.length === 0) {
-    return <p className="text-sm text-[#706c65]">このステージにカードはありません。</p>;
+    return <p className="text-lg text-[#706c65]">このステージにカードはありません。</p>;
   }
 
   return (
@@ -51,8 +51,8 @@ function CardList({ cards }: { cards: readonly Card[] }) {
           key={`${card.type}-${"value" in card ? card.value : ""}-${index}`}
           className="rounded-lg bg-[#f7f5f0] px-3 py-2"
         >
-          <p className="font-medium text-[#383631]">{formatOperationCard(card)}</p>
-          <p className="mt-0.5 text-sm leading-relaxed text-[#706c65]">
+          <p className="text-xl font-medium text-[#383631]">{formatOperationCard(card)}</p>
+          <p className="mt-0.5 text-lg leading-relaxed text-[#706c65]">
             {describeCard(card)}
           </p>
         </li>
@@ -106,7 +106,7 @@ export function HelpModal({ stage }: HelpModalProps) {
             className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
           >
             <header className="flex items-center justify-between border-b border-[#e8e6df] px-8 py-6">
-              <h2 id={`${dialogId}-title`} className="text-lg text-[#383631]">
+              <h2 id={`${dialogId}-title`} className="text-2xl text-[#383631]">
                 ヘルプ
               </h2>
               <button
@@ -114,7 +114,7 @@ export function HelpModal({ stage }: HelpModalProps) {
                 type="button"
                 aria-label="ヘルプを閉じる"
                 onClick={() => setIsOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-2xl leading-none text-[#706c65] hover:bg-[#f1efe9]"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-3xl leading-none text-[#706c65] hover:bg-[#f1efe9]"
               >
                 ×
               </button>
@@ -124,11 +124,11 @@ export function HelpModal({ stage }: HelpModalProps) {
               <section aria-labelledby={`${dialogId}-how-to-play`}>
                 <h3
                   id={`${dialogId}-how-to-play`}
-                  className="mb-2 font-semibold text-[#383631]"
+                  className="mb-2 text-xl font-semibold text-[#383631]"
                 >
                   ゲームの遊び方
                 </h3>
-                <p className="text-sm leading-relaxed">
+                <p className="text-lg leading-relaxed">
                   与えられた数字にカードの計算を順番に適用し、なるべく大きな数値を目指すゲームです。
                   右にある手札のカードを左のスロットに配置して実行ボタンを押すと、上の行から順に計算します。
                   鍵付きのカードを動かすことはできません。
