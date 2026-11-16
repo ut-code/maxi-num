@@ -5,6 +5,7 @@ import {
   applyCard,
   applyUnaryCard,
   calculateAverageScore,
+  getCardLaneSpan,
   isUnaryCard,
 } from "~/game";
 import { StageHeader } from "~/components/StageHeader";
@@ -23,16 +24,6 @@ function formatDisplayNumber(num: number): string {
   if (Number.isInteger(num)) return num.toString();
   const rounded = Math.round(num * 100) / 100;
   return rounded.toString();
-}
-
-function getCardLaneSpan(card: Card, laneCount: number): number {
-  const span =
-    card.type === "ratio3" || (card.type === "sortAsc" && laneCount >= 3)
-      ? 3
-      : isUnaryCard(card)
-        ? 1
-        : 2;
-  return Math.min(span, laneCount);
 }
 
 type WideCardPlacement = {
@@ -1038,7 +1029,16 @@ export default function PlayStage(props?: Partial<Stage>) {
       }
       const usedAllCards = placedSet.size === stageCards.length;
       const filledAllSlots = placedRows.every(
-        (row) => row.wideCards.length > 0 || row.cols.some((idx) => idx !== null)
+        (row) =>
+          row.cols.every(
+            (idx, lane) =>
+              idx !== null ||
+              row.wideCards.some(
+                (placement) =>
+                  lane >= placement.startLane &&
+                  lane < placement.startLane + placement.laneSpan
+              )
+          )
       );
 
       setScore({

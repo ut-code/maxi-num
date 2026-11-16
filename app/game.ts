@@ -425,6 +425,16 @@ export function isTernaryCard(card: Card): card is TernaryCard {
   return card.type === "ratio3" || card.type === "sortAsc";
 }
 
+export function getCardLaneSpan(card: Card, laneCount: number): number {
+  const span =
+    card.type === "ratio3" || (card.type === "sortAsc" && laneCount >= 3)
+      ? 3
+      : isUnaryCard(card)
+        ? 1
+        : 2;
+  return Math.min(span, laneCount);
+}
+
 // 配列で与えられた複数の数値の平均を計算する関数。
 export function calculateAverageScore(
   numbers: readonly number[]
