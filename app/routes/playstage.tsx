@@ -12,6 +12,7 @@ import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
 import { FallingBackground } from "~/components/FallingBackground";
+import { HelpModal } from "~/components/HelpModal";
 
 export function meta() {
   return [{ title: "MaxiNum" }, { name: "description", content: "プレイ画面" }];
@@ -1156,6 +1157,10 @@ function StageGame(props?: Partial<Stage>) {
           </span>
         </Link>
       )}
+
+      <div className="absolute right-3 top-3 z-20">
+        <HelpModal stage={stage} />
+      </div>
 
       {/* エラーメッセージ */}
       {errorMessage && (
