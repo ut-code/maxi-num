@@ -1,15 +1,17 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { useParams } from "react-router";
 import { STAGES, type Card, type Stage, type FixedCard } from "~/stages";
 import {
   applyCard,
   applyUnaryCard,
   calculateAverageScore,
+  getCardLaneSpan,
   isUnaryCard,
 } from "~/game";
+import { Link, useParams } from "react-router";
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
+import { FallingBackground } from "~/components/FallingBackground";
 import { HelpModal } from "~/components/HelpModal";
 
 export function meta() {
@@ -24,16 +26,6 @@ function formatDisplayNumber(num: number): string {
   if (Number.isInteger(num)) return num.toString();
   const rounded = Math.round(num * 100) / 100;
   return rounded.toString();
-}
-
-function getCardLaneSpan(card: Card, laneCount: number): number {
-  const span =
-    card.type === "ratio3" || (card.type === "sortAsc" && laneCount >= 3)
-      ? 3
-      : isUnaryCard(card)
-        ? 1
-        : 2;
-  return Math.min(span, laneCount);
 }
 
 type WideCardPlacement = {
@@ -102,11 +94,19 @@ const EMPTY_FIXED_CARDS: FixedCard[] = [];
 
 export default function PlayStage(props?: Partial<Stage>) {
   const params = useParams();
+  // ステージを移ったときに、並べたカードや計算結果などの状態をリセットする
+  return <StageGame key={params.id} {...props} />;
+}
+
+function StageGame(props?: Partial<Stage>) {
+  const params = useParams();
   const routeStageNumber = params.id ? parseInt(params.id, 10) : 1;
   const stageNumber = !Number.isNaN(routeStageNumber) ? routeStageNumber : 1;
   const currentStage = STAGES[stageNumber - 1] ?? STAGES[0];
   // 存在しない番号のときはステージ1を表示しているので、スコアもステージ1として扱う
   const scoreStageNumber = STAGES[stageNumber - 1] ? stageNumber : 1;
+
+  const hasNextStage = scoreStageNumber < STAGES.length;
 
   const stage = useMemo(
     () => ({
@@ -122,7 +122,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       currentStage.startNums,
       currentStage.cards,
       currentStage.fixedCards,
-    ]
+    ],
   );
 
   const laneCount = stage.startNums.length;
@@ -165,20 +165,18 @@ export default function PlayStage(props?: Partial<Stage>) {
 
       return rows;
     },
-    [SLOT_COUNT, fixedCardsList]
+    [SLOT_COUNT, fixedCardsList],
   );
 
   // 左側のスロット行状態
   const [placedRows, setPlacedRows] = useState<RowSlotState[]>(() =>
-    createInitialRows(stage.startNums.length)
+    createInitialRows(stage.startNums.length),
   );
-
 
   // 出力結果表示用の平均値（初期値は0）
   const [outputAverage, setOutputAverage] = useState<number>(() => {
     return 0;
-  }
-  );
+  });
   // 出力結果表示用の数値配列（アニメーション等のフォールバック用）
   const [outputNums, setOutputNums] = useState<number[]>(stage.startNums);
   // 「平均」ボックスのハイライトフラグ
@@ -245,7 +243,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       const fixedIdx = -index - 1;
       return fixedCardsList[fixedIdx]?.card;
     },
-    [stageCards, fixedCardsList]
+    [stageCards, fixedCardsList],
   );
 
   // トレイ用のカードリスト
@@ -270,13 +268,17 @@ export default function PlayStage(props?: Partial<Stage>) {
     (originalIndex: number): boolean => {
       for (const row of placedRows) {
         if (row.cols.includes(originalIndex)) return true;
-        if (row.wideCards.some((placement) => placement.originalIndex === originalIndex)) {
+        if (
+          row.wideCards.some(
+            (placement) => placement.originalIndex === originalIndex,
+          )
+        ) {
           return true;
         }
       }
       return false;
     },
-    [placedRows]
+    [placedRows],
   );
 
   const getSourceCardIndex = useCallback(
@@ -285,7 +287,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       if (source.type === "slotWide") return source.originalIndex;
       return placedRows[source.row].cols[source.col];
     },
-    [placedRows]
+    [placedRows],
   );
 
   // ----------------------------------------------------
@@ -296,7 +298,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       x: number,
       y: number,
       card: Card,
-      ignoredCardIndex?: number
+      ignoredCardIndex?: number,
     ): DropTarget | null => {
       const isUnary = isUnaryCard(card);
       const laneSpan = getCardLaneSpan(card, laneCount);
@@ -310,7 +312,7 @@ export default function PlayStage(props?: Partial<Stage>) {
           (placement) =>
             placement.originalIndex !== ignoredCardIndex &&
             lane >= placement.startLane &&
-            lane < placement.startLane + placement.laneSpan
+            lane < placement.startLane + placement.laneSpan,
         );
       };
 
@@ -327,21 +329,25 @@ export default function PlayStage(props?: Partial<Stage>) {
               let closestStartLane = 0;
               let minDistance = Infinity;
 
-              for (let startLane = 0; startLane <= laneCount - laneSpan; startLane++) {
+              for (
+                let startLane = 0;
+                startLane <= laneCount - laneSpan;
+                startLane++
+              ) {
                 const lanesAvailable = Array.from(
                   { length: laneSpan },
-                  (_, index) => isLaneAvailable(r, startLane + index)
+                  (_, index) => isLaneAvailable(r, startLane + index),
                 ).every(Boolean);
                 if (!lanesAvailable) continue;
 
                 const firstCell = laneSlotRefs.current[r]?.[startLane];
-                const lastCell = laneSlotRefs.current[r]?.[startLane + laneSpan - 1];
+                const lastCell =
+                  laneSlotRefs.current[r]?.[startLane + laneSpan - 1];
                 if (!firstCell || !lastCell) continue;
 
                 const firstRect = firstCell.getBoundingClientRect();
                 const lastRect = lastCell.getBoundingClientRect();
-                const pairCenterX =
-                  (firstRect.left + lastRect.right) / 2;
+                const pairCenterX = (firstRect.left + lastRect.right) / 2;
                 const distance = Math.abs(x - pairCenterX);
                 if (distance < minDistance) {
                   minDistance = distance;
@@ -407,18 +413,14 @@ export default function PlayStage(props?: Partial<Stage>) {
 
       return null;
     },
-    [SLOT_COUNT, laneCount, placedRows]
+    [SLOT_COUNT, laneCount, placedRows],
   );
 
   // ----------------------------------------------------
   // ドラッグ＆ドロップ（ホールドして運ぶ）ロジック
   // ----------------------------------------------------
   const handlePointerDown = useCallback(
-    (
-      e: React.PointerEvent<HTMLElement>,
-      source: DragSource,
-      card: Card
-    ) => {
+    (e: React.PointerEvent<HTMLElement>, source: DragSource, card: Card) => {
       if (isExecuting) return;
       if (e.button !== 0) return; // 主ボタン（左クリック/タッチ）のみ
 
@@ -431,7 +433,10 @@ export default function PlayStage(props?: Partial<Stage>) {
         const firstSlot = laneSlotRefs.current[0]?.[0]?.firstElementChild;
         const lastSlot =
           laneSlotRefs.current[0]?.[laneSpan - 1]?.firstElementChild;
-        if (firstSlot instanceof HTMLElement && lastSlot instanceof HTMLElement) {
+        if (
+          firstSlot instanceof HTMLElement &&
+          lastSlot instanceof HTMLElement
+        ) {
           const firstRect = firstSlot.getBoundingClientRect();
           const lastRect = lastSlot.getBoundingClientRect();
           displayWidth = lastRect.right - firstRect.left;
@@ -463,13 +468,14 @@ export default function PlayStage(props?: Partial<Stage>) {
       const initialHit =
         source.type === "slotWide"
           ? {
-            type: "wide" as const,
-            row: source.row,
-            startLane:
-              sourceRow?.wideCards.find(
-                (placement) => placement.originalIndex === source.originalIndex
-              )?.startLane ?? 0,
-          }
+              type: "wide" as const,
+              row: source.row,
+              startLane:
+                sourceRow?.wideCards.find(
+                  (placement) =>
+                    placement.originalIndex === source.originalIndex,
+                )?.startLane ?? 0,
+            }
           : source.type === "slotLane"
             ? { type: "lane" as const, row: source.row, col: source.col }
             : getHitTarget(e.clientX, e.clientY, card);
@@ -477,7 +483,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       setHoveredTarget(initialHit);
       setErrorMessage(null);
     },
-    [isExecuting, getHitTarget, placedRows]
+    [isExecuting, getHitTarget, placedRows],
   );
 
   useEffect(() => {
@@ -487,7 +493,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       if (dragStartPosRef.current) {
         const dist = Math.hypot(
           e.clientX - dragStartPosRef.current.x,
-          e.clientY - dragStartPosRef.current.y
+          e.clientY - dragStartPosRef.current.y,
         );
         if (dist > 5) {
           hasMovedRef.current = true;
@@ -497,11 +503,11 @@ export default function PlayStage(props?: Partial<Stage>) {
       setDragState((prev) =>
         prev
           ? {
-            ...prev,
-            pointerX: e.clientX,
-            pointerY: e.clientY,
-          }
-          : null
+              ...prev,
+              pointerX: e.clientX,
+              pointerY: e.clientY,
+            }
+          : null,
       );
 
       setHoveredTarget(
@@ -509,8 +515,8 @@ export default function PlayStage(props?: Partial<Stage>) {
           e.clientX,
           e.clientY,
           dragState.card,
-          getSourceCardIndex(dragState.source) ?? undefined
-        )
+          getSourceCardIndex(dragState.source) ?? undefined,
+        ),
       );
     };
 
@@ -521,7 +527,7 @@ export default function PlayStage(props?: Partial<Stage>) {
           e.clientX,
           e.clientY,
           currentDrag.card,
-          getSourceCardIndex(currentDrag.source) ?? undefined
+          getSourceCardIndex(currentDrag.source) ?? undefined,
         ) ?? hoveredTarget;
 
       setDragState(null);
@@ -539,9 +545,11 @@ export default function PlayStage(props?: Partial<Stage>) {
           const next = prev.map((row) => {
             return {
               type: "lanes" as const,
-              cols: row.cols.map((colIdx) => (colIdx === cardIndex ? null : colIdx)),
+              cols: row.cols.map((colIdx) =>
+                colIdx === cardIndex ? null : colIdx,
+              ),
               wideCards: row.wideCards.filter(
-                (placement) => placement.originalIndex !== cardIndex
+                (placement) => placement.originalIndex !== cardIndex,
               ),
             };
           });
@@ -552,10 +560,7 @@ export default function PlayStage(props?: Partial<Stage>) {
             const laneSpan = getCardLaneSpan(card, laneCount);
             next[hitTarget.row].wideCards.push({
               originalIndex: cardIndex,
-              startLane: Math.min(
-                hitTarget.startLane,
-                laneCount - laneSpan
-              ),
+              startLane: Math.min(hitTarget.startLane, laneCount - laneSpan),
               laneSpan,
             });
           } else {
@@ -576,14 +581,19 @@ export default function PlayStage(props?: Partial<Stage>) {
             next[fromRow] = {
               ...next[fromRow],
               wideCards: next[fromRow].wideCards.filter(
-                (placement) => placement.originalIndex !== origIdx
+                (placement) => placement.originalIndex !== origIdx,
               ),
             };
             return next;
           });
           if (origIdx !== null && trayItemRefs.current[origIdx]) {
             const r = trayItemRefs.current[origIdx]!.getBoundingClientRect();
-            targetRect = { left: r.left, top: r.top, width: r.width, height: r.height };
+            targetRect = {
+              left: r.left,
+              top: r.top,
+              width: r.width,
+              height: r.height,
+            };
           }
         } else if (currentDrag.source.type === "slotLane") {
           const { row: fromRow, col: fromCol } = currentDrag.source;
@@ -597,7 +607,12 @@ export default function PlayStage(props?: Partial<Stage>) {
           });
           if (origIdx !== null && trayItemRefs.current[origIdx]) {
             const r = trayItemRefs.current[origIdx]!.getBoundingClientRect();
-            targetRect = { left: r.left, top: r.top, width: r.width, height: r.height };
+            targetRect = {
+              left: r.left,
+              top: r.top,
+              width: r.width,
+              height: r.height,
+            };
           }
         }
 
@@ -660,7 +675,7 @@ export default function PlayStage(props?: Partial<Stage>) {
     (
       source:
         | { type: "wide"; row: number; originalIndex: number }
-        | { type: "lane"; row: number; col: number }
+        | { type: "lane"; row: number; col: number },
     ) => {
       if (isExecuting) return;
       const holdDuration = Date.now() - dragStartTimeRef.current;
@@ -672,7 +687,7 @@ export default function PlayStage(props?: Partial<Stage>) {
           next[source.row] = {
             ...next[source.row],
             wideCards: next[source.row].wideCards.filter(
-              (placement) => placement.originalIndex !== source.originalIndex
+              (placement) => placement.originalIndex !== source.originalIndex,
             ),
           };
         } else {
@@ -684,7 +699,7 @@ export default function PlayStage(props?: Partial<Stage>) {
       });
       setErrorMessage(null);
     },
-    [isExecuting]
+    [isExecuting],
   );
 
   // ----------------------------------------------------
@@ -738,17 +753,17 @@ export default function PlayStage(props?: Partial<Stage>) {
     setMovingTokens((prev) =>
       prev
         ? prev.map((t, c) => {
-          const slotEl = laneSlotRefs.current[0]?.[c] ?? rowRefs.current[0];
-          const pt = slotEl ? getCenter(slotEl) : { x: t.x, y: 50 };
-          return {
-            ...t,
-            x: pt.x,
-            y: pt.y - 36,
-            transition:
-              "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-          };
-        })
-        : null
+            const slotEl = laneSlotRefs.current[0]?.[c] ?? rowRefs.current[0];
+            const pt = slotEl ? getCenter(slotEl) : { x: t.x, y: 50 };
+            return {
+              ...t,
+              x: pt.x,
+              y: pt.y - 36,
+              transition:
+                "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+            };
+          })
+        : null,
     );
     await new Promise((r) => setTimeout(r, 220));
 
@@ -759,20 +774,20 @@ export default function PlayStage(props?: Partial<Stage>) {
       setMovingTokens((prev) =>
         prev
           ? prev.map((token, colIdx) => {
-            const slotEl =
-              laneSlotRefs.current[r]?.[colIdx] ?? rowRefs.current[r];
-            const point = slotEl
-              ? getCenter(slotEl)
-              : { x: token.x, y: token.y + 60 };
-            return {
-              ...token,
-              x: point.x,
-              y: point.y,
-              transition:
-                "left 180ms cubic-bezier(0.2, 0.8, 0.2, 1), top 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-            };
-          })
-          : null
+              const slotEl =
+                laneSlotRefs.current[r]?.[colIdx] ?? rowRefs.current[r];
+              const point = slotEl
+                ? getCenter(slotEl)
+                : { x: token.x, y: token.y + 60 };
+              return {
+                ...token,
+                x: point.x,
+                y: point.y,
+                transition:
+                  "left 180ms cubic-bezier(0.2, 0.8, 0.2, 1), top 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              };
+            })
+          : null,
       );
       await new Promise((r) => setTimeout(r, 200));
 
@@ -780,11 +795,11 @@ export default function PlayStage(props?: Partial<Stage>) {
         ...rowState.wideCards.flatMap((placement) =>
           Array.from(
             { length: placement.laneSpan },
-            (_, index) => placement.startLane + index
-          )
+            (_, index) => placement.startLane + index,
+          ),
         ),
         ...rowState.cols.flatMap((cardIndex, colIdx) =>
-          cardIndex === null ? [] : [colIdx]
+          cardIndex === null ? [] : [colIdx],
         ),
       ];
       let nextVals = [...currentVals];
@@ -800,7 +815,7 @@ export default function PlayStage(props?: Partial<Stage>) {
           if (!card) continue;
           const inputs = currentVals.slice(
             placement.startLane,
-            placement.startLane + placement.laneSpan
+            placement.startLane + placement.laneSpan,
           );
           const result = applyCard(inputs, card);
           if (!result.success) {
@@ -833,21 +848,21 @@ export default function PlayStage(props?: Partial<Stage>) {
         const msg =
           err instanceof Error ? err.message : "計算エラーが発生しました";
         setErrorMessage(msg);
-          setTimeout(()=>{
-            setErrorMessage(null);
-          }, 1000)
+        setTimeout(() => {
+          setErrorMessage(null);
+        }, 1000);
       }
 
       if (hasError) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((token, colIdx) => ({
-              ...token,
-              isError: activeCols.includes(colIdx),
-              scale: activeCols.includes(colIdx) ? 1.25 : 1,
-              transition: "transform 180ms ease-in-out",
-            }))
-            : null
+                ...token,
+                isError: activeCols.includes(colIdx),
+                scale: activeCols.includes(colIdx) ? 1.25 : 1,
+                transition: "transform 180ms ease-in-out",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 450));
         setActiveRow(null);
@@ -860,26 +875,25 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((token, colIdx) => ({
-              ...token,
-              value: currentVals[colIdx],
-              scale: activeCols.includes(colIdx) ? 1.35 : 1,
-              isPopping: activeCols.includes(colIdx),
-              transition:
-                "transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }))
-            : null
+                ...token,
+                value: currentVals[colIdx],
+                scale: activeCols.includes(colIdx) ? 1.35 : 1,
+                isPopping: activeCols.includes(colIdx),
+                transition: "transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 160));
 
         setMovingTokens((prev) =>
           prev
             ? prev.map((token) => ({
-              ...token,
-              scale: 1,
-              isPopping: false,
-              transition: "transform 140ms ease-out",
-            }))
-            : null
+                ...token,
+                scale: 1,
+                isPopping: false,
+                transition: "transform 140ms ease-out",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 180));
       } else {
@@ -905,11 +919,11 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              y: avgCenter.y,
-              transition: "top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-            }))
-            : null
+                ...t,
+                y: avgCenter.y,
+                transition: "top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -918,11 +932,11 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              x: avgCenter.x,
-              transition: "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-            }))
-            : null
+                ...t,
+                x: avgCenter.x,
+                transition: "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -944,12 +958,12 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              scale: 1.0,
-              isPopping: false,
-              transition: "transform 140ms ease-out",
-            }))
-            : null
+                ...t,
+                scale: 1.0,
+                isPopping: false,
+                transition: "transform 140ms ease-out",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 160));
         setIsAverageActive(false);
@@ -963,13 +977,13 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              x: outPt.x,
-              y: outPt.y,
-              transition:
-                "left 220ms cubic-bezier(0.2, 0.8, 0.2, 1), top 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-            }))
-            : null
+                ...t,
+                x: outPt.x,
+                y: outPt.y,
+                transition:
+                  "left 220ms cubic-bezier(0.2, 0.8, 0.2, 1), top 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 240));
 
@@ -979,12 +993,12 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              scale: 1.25,
-              opacity: 0,
-              transition: "transform 200ms ease-out, opacity 200ms ease-out",
-            }))
-            : null
+                ...t,
+                scale: 1.25,
+                opacity: 0,
+                transition: "transform 200ms ease-out, opacity 200ms ease-out",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 220));
       } else {
@@ -997,13 +1011,13 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              x: outPt.x,
-              y: outPt.y,
-              transition:
-                "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
-            }))
-            : null
+                ...t,
+                x: outPt.x,
+                y: outPt.y,
+                transition:
+                  "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -1012,12 +1026,12 @@ export default function PlayStage(props?: Partial<Stage>) {
         setMovingTokens((prev) =>
           prev
             ? prev.map((t) => ({
-              ...t,
-              scale: 1.25,
-              opacity: 0,
-              transition: "transform 200ms ease-out, opacity 200ms ease-out",
-            }))
-            : null
+                ...t,
+                scale: 1.25,
+                opacity: 0,
+                transition: "transform 200ms ease-out, opacity 200ms ease-out",
+              }))
+            : null,
         );
         await new Promise((r) => setTimeout(r, 220));
       }
@@ -1038,8 +1052,16 @@ export default function PlayStage(props?: Partial<Stage>) {
         }
       }
       const usedAllCards = placedSet.size === stageCards.length;
-      const filledAllSlots = placedRows.every(
-        (row) => row.wideCards.length > 0 || row.cols.some((idx) => idx !== null)
+      const filledAllSlots = placedRows.every((row) =>
+        row.cols.every(
+          (idx, lane) =>
+            idx !== null ||
+            row.wideCards.some(
+              (placement) =>
+                lane >= placement.startLane &&
+                lane < placement.startLane + placement.laneSpan,
+            ),
+        ),
       );
 
       setScore({
@@ -1095,28 +1117,49 @@ export default function PlayStage(props?: Partial<Stage>) {
       key={stageNumber}
       className="relative min-h-screen w-full bg-[#faf8f3] overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
     >
-      {/* 背景装飾 */}
-      <div
-        className="absolute top-12 sm:top-16 left-[53%] sm:left-[55%] w-12 sm:w-16 h-12 sm:h-16 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute top-20 left-[33%] sm:left-[35%] w-3.5 h-3.5 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute bottom-16 sm:bottom-20 left-[18%] sm:left-[22%] w-10 sm:w-11 h-10 sm:h-11 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
-      <div
-        className="absolute bottom-8 sm:bottom-12 left-[48%] sm:left-[52%] w-18 sm:w-22 h-18 sm:h-22 bg-[#e8e6df]/75 pointer-events-none"
-        aria-hidden="true"
-      />
+      {/* 背景：ホーム画面と同じ四角形のアニメーション（数字は流さない） */}
+      <FallingBackground showNumbers={false} />
 
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
-        <StageHeader stageNumber={stageNumber} backTo="/stages" variant="corner" />
+        <StageHeader
+          stageNumber={stageNumber}
+          backTo="/stages"
+          variant="corner"
+        />
       </div>
+
+      {/* 右下の次のステージへ進むボタン */}
+      {hasNextStage && (
+        <Link
+          to={`/play/${scoreStageNumber + 1}`}
+          className="group absolute bottom-0 right-0 z-20 inline-flex items-center gap-3 bg-white rounded-tl-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-6 pr-5 py-3 select-none"
+        >
+          <span
+            className="text-xl sm:text-2xl font-serif text-[#aba8a1] group-hover:text-[#8a8780] tracking-wider transition-colors duration-150"
+            style={{
+              fontFamily:
+                "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+            }}
+          >
+            次のステージへ
+          </span>
+          <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[#efbc62] group-hover:bg-[#e9ad45] group-active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.12)] transition-all duration-150">
+            <svg
+              className="w-7 h-7 sm:w-8 sm:h-8 text-[#6b5832] translate-x-0.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </span>
+        </Link>
+      )}
 
       <div className="absolute right-3 top-3 z-20">
         <HelpModal stage={stage} />
@@ -1161,8 +1204,9 @@ export default function PlayStage(props?: Partial<Stage>) {
                     ref={(el) => {
                       startNumsRefs.current[colIdx] = el;
                     }}
-                    className={`absolute font-serif text-2xl text-[#2d2d2d] transition-opacity duration-200 pointer-events-none whitespace-nowrap ${movingTokens ? "opacity-35" : "opacity-100"
-                      }`}
+                    className={`absolute font-serif text-2xl text-[#2d2d2d] transition-opacity duration-200 pointer-events-none whitespace-nowrap ${
+                      movingTokens ? "opacity-35" : "opacity-100"
+                    }`}
                     style={{
                       right: numRightOffset,
                       top: "5px",
@@ -1221,12 +1265,14 @@ export default function PlayStage(props?: Partial<Stage>) {
                   {Array.from({ length: laneCount }).map((_, colIdx) => {
                     const cardIndex = rowState.cols[colIdx];
                     const card =
-                      cardIndex !== null ? getCardByIndex(cardIndex) : undefined;
+                      cardIndex !== null
+                        ? getCardByIndex(cardIndex)
+                        : undefined;
                     const isFixed = cardIndex !== null && cardIndex < 0;
                     const coveringWideCard = rowState.wideCards.some(
                       (placement) =>
                         colIdx >= placement.startLane &&
-                        colIdx < placement.startLane + placement.laneSpan
+                        colIdx < placement.startLane + placement.laneSpan,
                     );
 
                     const isCellActive =
@@ -1241,10 +1287,10 @@ export default function PlayStage(props?: Partial<Stage>) {
                       hoveredTarget.row === rowIdx &&
                       dragState !== null &&
                       colIdx >= hoveredTarget.startLane &&
-                      colIdx < hoveredTarget.startLane +
-                      getCardLaneSpan(dragState.card, laneCount);
-                    const isDropTarget =
-                      isLaneDropTarget || isWideDropTarget;
+                      colIdx <
+                        hoveredTarget.startLane +
+                          getCardLaneSpan(dragState.card, laneCount);
+                    const isDropTarget = isLaneDropTarget || isWideDropTarget;
 
                     const isSlotDragging =
                       dragState?.source.type === "slotLane" &&
@@ -1274,30 +1320,36 @@ export default function PlayStage(props?: Partial<Stage>) {
                           onPointerDown={
                             card && !isFixed && !isExecuting
                               ? (e) =>
-                                handlePointerDown(
-                                  e,
-                                  { type: "slotLane", row: rowIdx, col: colIdx },
-                                  card
-                                )
+                                  handlePointerDown(
+                                    e,
+                                    {
+                                      type: "slotLane",
+                                      row: rowIdx,
+                                      col: colIdx,
+                                    },
+                                    card,
+                                  )
                               : undefined
                           }
                           onClick={
                             card && !isFixed && !isExecuting
                               ? () =>
-                                handleRemoveSlot({
-                                  type: "lane",
-                                  row: rowIdx,
-                                  col: colIdx,
-                                })
+                                  handleRemoveSlot({
+                                    type: "lane",
+                                    row: rowIdx,
+                                    col: colIdx,
+                                  })
                               : undefined
                           }
-                          className={`w-full ${laneWidthClass} transition-all duration-150 ${isCellActive && !coveringWideCard
-                            ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
-                            : ""
-                            } ${card && !isFixed && !isExecuting
+                          className={`w-full ${laneWidthClass} transition-all duration-150 ${
+                            isCellActive && !coveringWideCard
+                              ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
+                              : ""
+                          } ${
+                            card && !isFixed && !isExecuting
                               ? "cursor-grab active:cursor-grabbing hover:brightness-95"
                               : ""
-                            }`}
+                          }`}
                         />
                       </div>
                     );
@@ -1310,18 +1362,20 @@ export default function PlayStage(props?: Partial<Stage>) {
                   >
                     {rowState.wideCards.map((placement) => {
                       const card = getCardByIndex(placement.originalIndex);
-                      const isFixed = placement.isFixed || placement.originalIndex < 0;
+                      const isFixed =
+                        placement.isFixed || placement.originalIndex < 0;
                       const isSlotDragging =
                         dragState?.source.type === "slotWide" &&
                         dragState.source.row === rowIdx &&
-                        dragState.source.originalIndex === placement.originalIndex;
+                        dragState.source.originalIndex ===
+                          placement.originalIndex;
                       const isDropTarget =
                         hoveredTarget?.type === "wide" &&
                         hoveredTarget.row === rowIdx &&
                         hoveredTarget.startLane === placement.startLane;
                       const isCardActive = Array.from(
                         { length: placement.laneSpan },
-                        (_, index) => placement.startLane + index
+                        (_, index) => placement.startLane + index,
                       ).some((colIdx) => activeLanes.includes(colIdx));
 
                       return (
@@ -1335,34 +1389,36 @@ export default function PlayStage(props?: Partial<Stage>) {
                           onPointerDown={
                             !isFixed && !isExecuting && card
                               ? (e) =>
-                                handlePointerDown(
-                                  e,
-                                  {
-                                    type: "slotWide",
-                                    row: rowIdx,
-                                    originalIndex: placement.originalIndex,
-                                  },
-                                  card
-                                )
+                                  handlePointerDown(
+                                    e,
+                                    {
+                                      type: "slotWide",
+                                      row: rowIdx,
+                                      originalIndex: placement.originalIndex,
+                                    },
+                                    card,
+                                  )
                               : undefined
                           }
                           onClick={
                             !isFixed && !isExecuting
                               ? () =>
-                                handleRemoveSlot({
-                                  type: "wide",
-                                  row: rowIdx,
-                                  originalIndex: placement.originalIndex,
-                                })
+                                  handleRemoveSlot({
+                                    type: "wide",
+                                    row: rowIdx,
+                                    originalIndex: placement.originalIndex,
+                                  })
                               : undefined
                           }
-                          className={`pointer-events-auto w-full transition-all duration-150 ${isRowActive && isCardActive
-                            ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
-                            : ""
-                            } ${!isFixed && !isExecuting
+                          className={`pointer-events-auto w-full transition-all duration-150 ${
+                            isRowActive && isCardActive
+                              ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
+                              : ""
+                          } ${
+                            !isFixed && !isExecuting
                               ? "cursor-grab active:cursor-grabbing hover:brightness-95"
                               : ""
-                            }`}
+                          }`}
                           style={{
                             gridColumn: `${placement.startLane + 1} / span ${placement.laneSpan}`,
                           }}
@@ -1379,10 +1435,11 @@ export default function PlayStage(props?: Partial<Stage>) {
           {laneCount > 1 && (
             <div
               ref={averageBoxRef}
-              className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 my-1 ${isAverageActive
-                ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
-                : ""
-                }`}
+              className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 my-1 ${
+                isAverageActive
+                  ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
+                  : ""
+              }`}
             >
               平均
             </div>
@@ -1419,8 +1476,9 @@ export default function PlayStage(props?: Partial<Stage>) {
             {/* 出力結果数字（平均値） */}
             <span
               ref={outputAvgRef}
-              className={`absolute font-serif text-2xl text-[#2d2d2d] transition-transform duration-200 pointer-events-none whitespace-nowrap ${!isExecuting ? "scale-100" : ""
-                }`}
+              className={`absolute font-serif text-2xl text-[#2d2d2d] transition-transform duration-200 pointer-events-none whitespace-nowrap ${
+                !isExecuting ? "scale-100" : ""
+              }`}
               style={{
                 left: "calc(50% + 56px)",
                 top: "8px",
@@ -1445,12 +1503,13 @@ export default function PlayStage(props?: Partial<Stage>) {
                   transition: token.transition,
                   opacity: token.opacity,
                 }}
-                className={`z-30 pointer-events-none flex items-center justify-center min-w-10 h-10 px-3 rounded-full font-serif font-bold text-lg whitespace-nowrap shadow-[0_4px_16px_rgba(0,0,0,0.2)] ${token.isError
-                  ? "bg-red-50 border-2 border-red-500 text-red-600 ring-4 ring-red-200"
-                  : token.isPopping
-                    ? "bg-[#fff8e6] border-2 border-[#f6ba52] text-[#2d2d2d] ring-4 ring-[#f6ba52]/40 shadow-[0_0_20px_rgba(246,186,82,0.8)]"
-                    : "bg-[#fdfcf9] border-2 border-[#f6ba52] text-[#2d2d2d]"
-                  }`}
+                className={`z-30 pointer-events-none flex items-center justify-center min-w-10 h-10 px-3 rounded-full font-serif font-bold text-lg whitespace-nowrap shadow-[0_4px_16px_rgba(0,0,0,0.2)] ${
+                  token.isError
+                    ? "bg-red-50 border-2 border-red-500 text-red-600 ring-4 ring-red-200"
+                    : token.isPopping
+                      ? "bg-[#fff8e6] border-2 border-[#f6ba52] text-[#2d2d2d] ring-4 ring-[#f6ba52]/40 shadow-[0_0_20px_rgba(246,186,82,0.8)]"
+                      : "bg-[#fdfcf9] border-2 border-[#f6ba52] text-[#2d2d2d]"
+                }`}
               >
                 {formatDisplayNumber(token.value)}
               </div>
@@ -1464,7 +1523,9 @@ export default function PlayStage(props?: Partial<Stage>) {
             <div className={`flex flex-col gap-3.5 ${totalGridWidthClass}`}>
               {traySlots.map((item, index) => {
                 if (!item) {
-                  return <OperationTile key={`empty-${index}`} className="w-full" />;
+                  return (
+                    <OperationTile key={`empty-${index}`} className="w-full" />
+                  );
                 }
 
                 const isPlaced = isCardPlaced(item.originalIndex);
@@ -1487,20 +1548,21 @@ export default function PlayStage(props?: Partial<Stage>) {
                       onPointerDown={
                         !isPlaced && !isExecuting
                           ? (e) =>
-                            handlePointerDown(
-                              e,
-                              {
-                                type: "tray",
-                                originalIndex: item.originalIndex,
-                              },
-                              item.card
-                            )
+                              handlePointerDown(
+                                e,
+                                {
+                                  type: "tray",
+                                  originalIndex: item.originalIndex,
+                                },
+                                item.card,
+                              )
                           : undefined
                       }
-                      className={`${getTrayCardWidthClass(item.card)} ${isPlaced
-                        ? "opacity-30 cursor-not-allowed"
-                        : "cursor-grab active:cursor-grabbing hover:brightness-95"
-                        }`}
+                      className={`${getTrayCardWidthClass(item.card)} ${
+                        isPlaced
+                          ? "opacity-30 cursor-not-allowed"
+                          : "cursor-grab active:cursor-grabbing hover:brightness-95"
+                      }`}
                     />
                   </div>
                 );

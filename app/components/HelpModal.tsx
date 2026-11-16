@@ -86,7 +86,7 @@ export function HelpModal({ stage }: HelpModalProps) {
         aria-expanded={isOpen}
         aria-controls={dialogId}
         onClick={() => setIsOpen(true)}
-        className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl font-serif text-[#504d49] shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#f1efe9] active:scale-95"
+        className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-3xl font-serif text-[#504d49] shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#f1efe9] active:scale-95"
       >
         ?
       </button>

@@ -1,4 +1,10 @@
-import { calculateResult, isUnaryCard, type CardStep } from "./game";
+import {
+  applyCard,
+  applyUnaryCard,
+  calculateAverageScore,
+  getCardLaneSpan,
+  isUnaryCard,
+} from "./game";
 import type { Card, Stage } from "./stages";
 
 // 上位何%以内なら何個の星か
@@ -38,111 +44,209 @@ export function arrangements<T>(items: readonly T[]): T[][] {
   ];
 }
 
-// 1つのカード並びに対して、空きスロット数の範囲でUnaryCardのレーン割り当てを展開する
-function expandCardSteps(
-  order: Card[],
-  laneCount: number,
-  availableSlots: number = SLOT_COUNT
-): CardStep[][] {
-  if (order.length === 0 || availableSlots === 0) return [[]];
-  const [first, ...rest] = order;
-  const restExpanded = expandCardSteps(rest, laneCount, availableSlots - 1);
 
-  if (isUnaryCard(first) && laneCount > 1) {
-    const results: CardStep[][] = [];
-    for (let lane = 0; lane < laneCount; lane++) {
-      for (const r of restExpanded) {
-        results.push([{ card: first, targetLane: lane }, ...r]);
-      }
+
+type CardPlacement = {
+  card: Card;
+  startLane: number;
+  laneSpan: number;
+};
+
+type CardRows = CardPlacement[][];
+
+type RowLayout = {
+  placements: CardPlacement[];
+  remainingCards: Card[];
+};
+
+// 固定カードを避けて手札カードを配置し、1行分のレイアウトを列挙する
+function* expandCardSteps(
+  cards: Card[],
+  laneCount: number,
+  fixedPlacements: CardPlacement[]
+): Generator<RowLayout> {
+  const placements = [...fixedPlacements];
+  const occupied = Array.from({ length: laneCount }, () => false);
+
+  for (const placement of fixedPlacements) {
+    for (
+      let lane = placement.startLane;
+      lane < placement.startLane + placement.laneSpan;
+      lane += 1
+    ) {
+      occupied[lane] = true;
     }
-    return results;
   }
-  return restExpanded.map((r) => [first, ...r]);
+
+  function* expand(
+    cardIndex: number,
+    remainingCards: Card[]
+  ): Generator<RowLayout> {
+    if (cardIndex >= cards.length) {
+      yield { placements: [...placements], remainingCards };
+      return;
+    }
+
+    const card = cards[cardIndex];
+    yield* expand(cardIndex + 1, [...remainingCards, card]);
+
+    const laneSpan = getCardLaneSpan(card, laneCount);
+    for (let startLane = 0; startLane <= laneCount - laneSpan; startLane += 1) {
+      const lanes = Array.from(
+        { length: laneSpan },
+        (_, index) => startLane + index
+      );
+      if (lanes.some((lane) => occupied[lane])) continue;
+
+      lanes.forEach((lane) => {
+        occupied[lane] = true;
+      });
+      placements.push({ card, startLane, laneSpan });
+      yield* expand(cardIndex + 1, remainingCards);
+      placements.pop();
+      lanes.forEach((lane) => {
+        occupied[lane] = false;
+      });
+    }
+  }
+
+  yield* expand(0, []);
 }
 
-// 固定カードを考慮して空きスロットに行番号順に手札カードを挿入して実行結果をシミュレート
-function resultsWithFixedCards(stage: Stage, orders: Card[][]): number[] {
-  const results = new Set<number>();
+function applyRow(
+  current: readonly number[],
+  placements: CardPlacement[]
+): number[] | undefined {
+  const next = [...current];
+
+  for (const placement of placements) {
+    if (placement.laneSpan === 1) continue;
+    const inputs = current.slice(
+      placement.startLane,
+      placement.startLane + placement.laneSpan
+    );
+    const result = applyCard(inputs, placement.card);
+    if (!result.success) return undefined;
+    result.value.forEach((value, index) => {
+      next[placement.startLane + index] = value;
+    });
+  }
+
+  for (const placement of placements) {
+    if (placement.laneSpan !== 1 || !isUnaryCard(placement.card)) continue;
+    const result = applyUnaryCard(current[placement.startLane], placement.card);
+    if (!result.success) return undefined;
+    next[placement.startLane] = result.value;
+  }
+
+  return next;
+}
+
+// 固定カードの配置を保ったまま手札カードを配置して実行結果をシミュレート
+function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
   const laneCount = stage.startNums.length;
   const fixedCards = stage.fixedCards ?? [];
+  const fixedRows: CardRows = Array.from({ length: SLOT_COUNT }, () => []);
 
-  // 固定カードがない場合は通常の展開
-  if (fixedCards.length === 0) {
-    for (const order of orders) {
-      const expandedSteps = expandCardSteps(order, laneCount);
-      console.log(expandedSteps);
-      for (const steps of expandedSteps) {
-        try {
-          const res = calculateResult(stage.startNums, steps);
-          if (res.success) {
-            results.add(res.score);
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-    return [...results].sort((a, b) => b - a);
-  }
-
-  // 固定カードがある場合：スロット行(0〜3)の空いている場所を手札カードで埋めるパターンを試す
-  // 各行に固定カードがあるか判定
-  const fixedByRow = new Map<number, CardStep[]>();
   for (const fc of fixedCards) {
-    const list = fixedByRow.get(fc.row) ?? [];
-    list.push({ card: fc.card, targetLane: fc.lane ?? 0 });
-    fixedByRow.set(fc.row, list);
+    if (fc.row < 0 || fc.row >= SLOT_COUNT) continue;
+    const laneSpan = getCardLaneSpan(fc.card, laneCount);
+    const startLane =
+      laneSpan === 1
+        ? fc.lane ?? 0
+        : Math.min(fc.lane ?? 0, laneCount - laneSpan);
+    if (startLane < 0 || startLane + laneSpan > laneCount) continue;
+
+    fixedRows[fc.row].push({ card: fc.card, startLane, laneSpan });
   }
 
-  const availableRows = Array.from({ length: SLOT_COUNT }, (_, row) => row).filter(
-    (row) => !fixedByRow.has(row)
-  );
+  const maxCardsCache = new Map<string, number>();
+  const maxCardsPlaceable = (row: number, remainingCards: Card[]): number => {
+    if (row === SLOT_COUNT) return 0;
+    const key = JSON.stringify([row, remainingCards]);
+    const cached = maxCardsCache.get(key);
+    if (cached !== undefined) return cached;
 
-  // 利用可能な空き行インデックス（0〜3のうち手札カードを配置できる行）
-  // 簡略化して、固定カードのステップと手札カードのステップを組み合わせる
-  for (const order of orders) {
-    const expandedSteps = expandCardSteps(order, laneCount, availableRows.length);
-    for (const playerSteps of expandedSteps) {
-      // playerSteps と fixedCards を行スロットに配置
-      // playerStepsの長さが残りの空き行数以下である場合に配置可能
-      const totalSteps: CardStep[] = [];
-      let playerStepIdx = 0;
-      for (let r = 0; r < SLOT_COUNT; r++) {
-        if (fixedByRow.has(r)) {
-          totalSteps.push(...fixedByRow.get(r)!);
-        } else if (playerStepIdx < playerSteps.length) {
-          totalSteps.push(playerSteps[playerStepIdx]);
-          playerStepIdx += 1;
-        }
-      }
-      try {
-        const res = calculateResult(stage.startNums, totalSteps);
-        if (res.success) {
-          results.add(res.score);
-        }
-      } catch {
-        continue;
+    let maximum = 0;
+    for (const layout of expandCardSteps(
+      remainingCards,
+      laneCount,
+      fixedRows[row]
+    )) {
+      const usedInRow = remainingCards.length - layout.remainingCards.length;
+      maximum = Math.max(
+        maximum,
+        usedInRow + maxCardsPlaceable(row + 1, layout.remainingCards)
+      );
+    }
+    maxCardsCache.set(key, maximum);
+    return maximum;
+  };
+
+  const cache = new Map<string, Map<number, Set<number>>>();
+  const search = (
+    row: number,
+    current: readonly number[],
+    remainingCards: Card[]
+  ): Map<number, Set<number>> => {
+    if (row === SLOT_COUNT) {
+      const average = calculateAverageScore(current);
+      return average.success
+        ? new Map([[0, new Set([average.value])]])
+        : new Map();
+    }
+
+    const key = JSON.stringify([row, current, remainingCards]);
+    const cached = cache.get(key);
+    if (cached) return cached;
+
+    const resultsByCardCount = new Map<number, Set<number>>();
+    for (const layout of expandCardSteps(
+      remainingCards,
+      laneCount,
+      fixedRows[row]
+    )) {
+      const next = applyRow(current, layout.placements);
+      if (!next) continue;
+
+      const cardsUsedInRow = remainingCards.length - layout.remainingCards.length;
+      for (const [cardsUsedLater, scores] of search(
+        row + 1,
+        next,
+        layout.remainingCards
+      )) {
+        const totalCardsUsed = cardsUsedInRow + cardsUsedLater;
+        const target =
+          resultsByCardCount.get(totalCardsUsed) ?? new Set<number>();
+        for (const score of scores) target.add(score);
+        resultsByCardCount.set(totalCardsUsed, target);
       }
     }
-  }
 
+    cache.set(key, resultsByCardCount);
+    return resultsByCardCount;
+  };
+
+  const allResults = search(0, stage.startNums, stage.cards);
+  const results = new Set<number>();
+  const maxCardsUsed = maximizeCards
+    ? maxCardsPlaceable(0, stage.cards)
+    : undefined;
+  for (const [cardsUsed, scores] of allResults) {
+    if (maximizeCards && cardsUsed !== maxCardsUsed) continue;
+    for (const score of scores) results.add(score);
+  }
   return [...results].sort((a, b) => b - a);
 }
 
-// 並べ方ごとの計算結果を、重複を除いて大きい順に並べる関数。
-// 0で割るなど計算できない並べ方は除く。
-function resultsOf(stage: Stage, orders: Card[][]): number[] {
-  return resultsWithFixedCards(stage, orders);
-}
-
-// カードをすべて使ったときに起こりうる計算結果。星の数の基準にする
+// 可能な限り多くのカードを使ったときに起こりうる計算結果。星の数の基準にする
 export function possibleResults(stage: Stage): number[] {
-  return resultsOf(stage, permutations(stage.cards));
+  return resultsWithFixedCards(stage, true);
 }
 
 // カードを一部だけ使った場合も含めて、起こりうる計算結果
 export function reachableResults(stage: Stage): number[] {
-  return resultsOf(stage, arrangements(stage.cards));
+  return resultsWithFixedCards(stage, false);
 }
 
 // すべてのスロットを埋めていなければ星0。埋めていれば、計算結果の順位で星の数を決める。
