@@ -1311,6 +1311,7 @@ function StageGame(props?: Partial<Stage>) {
                           isDropTarget={isDropTarget}
                           isGhost={isSlotDragging}
                           isFixed={isFixed}
+                          isPlaced={Boolean(card && !isFixed)}
                           style={{
                             visibility: coveringWideCard ? "hidden" : undefined,
                           }}
@@ -1383,6 +1384,7 @@ function StageGame(props?: Partial<Stage>) {
                           isDropTarget={isDropTarget}
                           isGhost={isSlotDragging}
                           isFixed={isFixed}
+                          isPlaced={Boolean(card && !isFixed)}
                           onPointerDown={
                             !isFixed && !isExecuting && card
                               ? (e) =>
@@ -1432,7 +1434,7 @@ function StageGame(props?: Partial<Stage>) {
           {laneCount > 1 && (
             <div
               ref={averageBoxRef}
-              className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 my-1 ${
+              className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 mt-6 mb-1 ${
                 isTotalActive
                   ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"
                   : ""
