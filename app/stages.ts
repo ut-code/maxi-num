@@ -41,19 +41,45 @@ export type Stage = {
 };
 
 export const STAGES: Stage[] = [
+  // ステージ1
+  {
+    startNums: [6],
+    cards: [
+      { type: "plus", value: 1 },
+      { type: "minus", value: 1 },
+      { type: "multiply", value: 2 },
+      { type: "divide", value: 2 },
+    ],
+  },
+  // ステージ2
+  {
+    startNums: [86],
+    cards: [
+      { type: "plus", value: 1 },
+      { type: "minus", value: 2 },
+      { type: "multiply", value: 2 },
+      { type: "backwards" },
+      { type: "backwards" },
+    ],
+  },
+  // ステージ3
+  {
+    startNums: [11111, 11],
+    cards: [
+      { type: "divmod" },
+      { type: "divmod" },
+      { type: "multiply", value: 10 },
+      { type: "multiply", value: 10 },
+      { type: "backwards" },
+      { type: "backwards" },
+    ],
+  },
+  // ステージ4
   {
     startNums: [12, 18],
     fixedCards: [
-      {
-        card: { type: "minus", value: 20 },
-        row: 1,
-        lane: 0,
-      },
-      {
-        card: { type: "divide", value: 5 },
-        row: 3,
-        lane: 1,
-      },
+      { card: { type: "minus", value: 20 }, row: 1, lane: 0 },
+      { card: { type: "divide", value: 5 }, row: 3, lane: 1 },
     ],
     cards: [
       { type: "gcdLcm" },
@@ -64,27 +90,32 @@ export const STAGES: Stage[] = [
       { type: "minus", value: 1 },
       { type: "backwards" },
       { type: "plus", value: 3 },
-      { type: "multiply", value: 5 }
+      { type: "multiply", value: 5 },
     ],
   },
+  // ステージ5
+  {
+    startNums: [5, 28, 78],
+    fixedCards: [
+      { card: { type: "ratio3" }, row: 1, lane: 0 },
+      { card: { type: "ratio3" }, row: 3, lane: 0 },
+    ],
+    cards: [
+      { type: "plus", value: 2 },
+      { type: "multiply", value: 5 },
+      { type: "minus", value: 3 },
+      { type: "backwards" },
+      { type: "gcdLcm" },
+      { type: "gcdLcm" },
+    ],
+  },
+  // ステージ6
   {
     startNums: [18, 42, 60],
     fixedCards: [
-      {
-        card: { type: "minus", value: 20 },
-        row: 1,
-        lane: 0,
-      },
-      {
-        card: { type: "divisorCount" },
-        row: 1,
-        lane: 1,
-      },
-        {
-        card: { type: "divide", value: 7 },
-        row: 1,
-        lane: 2,
-      },
+      { card: { type: "minus", value: 20 }, row: 1, lane: 0 },
+      { card: { type: "divisorCount" }, row: 1, lane: 1 },
+      { card: { type: "divide", value: 7 }, row: 1, lane: 2 },
     ],
     cards: [
       { type: "ratio3" },
@@ -96,58 +127,6 @@ export const STAGES: Stage[] = [
       { type: "mod", value: 9 },
       { type: "ratio3" },
       { type: "divisorCount" },
-      { type: "backwards" }
-    ],
-  },
-  {
-    startNums: [86],
-    cards: [
-      { type: "plus", value: 1 },
-      { type: "minus", value: 2 },
-      { type: "multiply", value: 2 },
-      { type: "backwards" },
-      { type: "backwards" },
-    ]
-  },
-  {
-    startNums: [5, 28, 78],
-    cards: [
-      { type: "plus", value: 2 },
-      { type: "multiply", value: 5 },
-      { type: "minus", value: 3 },
-      { type: "backwards" },
-      { type: "gcdLcm" },
-      { type: "gcdLcm" },
-    ] ,
-    fixedCards: [
-      {
-        card: { type: "ratio3" },
-        row: 1,
-        lane: 0,
-      },
-      {
-        card: { type: "ratio3" },
-        row: 3,
-        lane: 0,
-      },
-    ]
-  },  {
-    startNums: [6],
-    cards: [
-      { type: "plus", value: 1 },
-      { type: "minus", value: 1 },
-      { type: "multiply", value: 2 },
-      { type: "divide", value: 2 },
-    ],
-  },
-  {
-    startNums: [11111, 11],
-    cards: [
-      { type: "divmod" },
-      { type: "divmod" },
-      { type: "multiply", value: 10 },
-      { type: "multiply", value: 10 },
-      { type: "backwards" },
       { type: "backwards" },
     ],
   },
