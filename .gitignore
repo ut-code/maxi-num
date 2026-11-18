@@ -5,3 +5,6 @@
 # React Router
 /.react-router/
 /build/
+
+# Wrangler / Miniflare のローカル状態
+/.wrangler/

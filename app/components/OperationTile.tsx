@@ -93,7 +93,7 @@ export function getOperationCardSegments(card: Card): string[] {
         case "sortAsc":
             return ["左から", "小さい順に", "並べる"];
         case "ratio3":
-            return ["3数の", "比にする"];
+            return ["3つの数の", "比にする"];
         default: {
             const _exhaustiveCheck: never = card;
             return [];
