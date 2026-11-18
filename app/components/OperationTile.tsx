@@ -1,4 +1,11 @@
-import React, { forwardRef } from "react";
+import React, {
+    forwardRef,
+    useCallback,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import type { Card } from "~/stages";
 
 type NumberPair = [number, number];
@@ -54,39 +61,93 @@ export type OperationTileProps = {
 };
 
 /**
+ * Card オブジェクトを、改行してよい位置で区切った文字列の配列に変換
+ * (例: "2で割った余り" → ["2で", "割った", "余り"])
+ */
+export function getOperationCardSegments(card: Card): string[] {
+    switch (card.type) {
+        case "plus":
+            return [`${card.value}を`, "足す"];
+        case "minus":
+            return [`${card.value}を`, "引く"];
+        case "multiply":
+            return [`${card.value}を`, "かける"];
+        case "divide":
+            return [`${card.value}で`, "割る"];
+        case "mod":
+            return [`${card.value}で`, "割った", "余り"];
+        case "backwards":
+            return ["反転する"];
+        case "divisorCount":
+            return ["約数の", "個数"];
+        case "divmod":
+            return ["商と", "余り"];
+        case "gcdLcm":
+            return ["最大公約数と", "最小公倍数"];
+        case "ratio":
+            return ["比にする"];
+        case "sortAsc":
+            return ["左から", "小さい順に", "並べる"];
+        case "ratio3":
+            return ["3数の", "比にする"];
+        default: {
+            const _exhaustiveCheck: never = card;
+            return [];
+        }
+    }
+}
+
+/**
  * Card オブジェクトを表示用の文字列に変換
  */
 export function formatOperationCard(card: Card): string {
-    switch (card.type) {
-        case "plus":
-            return `${card.value}を足す`;
-        case "minus":
-            return `${card.value}を引く`;
-        case "multiply":
-            return `${card.value}をかける`;
-        case "divide":
-            return `${card.value}で割る`;
-        case "mod":
-            return `${card.value}で割った余り`;
-        case "backwards":
-            return "反転する";
-        case "divisorCount":
-            return "約数の個数";
-        case "divmod":
-            return "商と余り";
-        case "gcdLcm":
-            return "最大公約数と最小公倍数";
-        case "ratio":
-            return "比にする";
-        case "sortAsc":
-            return "左から小さい順に並べる";
-        case "ratio3":
-            return "3数の比にする";
-        default: {
-            const _exhaustiveCheck: never = card;
-            return "";
-        }
+    return getOperationCardSegments(card).join("");
+}
+
+// カード内の文字の大きさの上限 (px)。1行のときは大きく、2行のときは高さに収まる大きさまで
+const MAX_FONT_SIZE_ONE_LINE = 24;
+const MAX_FONT_SIZE_TWO_LINES = 17;
+const MIN_FONT_SIZE = 10;
+// 左右の余白の合計 (px)
+const HORIZONTAL_PADDING = 14;
+
+// 文字列の幅を em 単位で見積もる (全角文字は 1em、半角の数字・記号は約 0.6em、tracking-wider 分を加算)
+function estimateTextWidthEm(text: string): number {
+    let width = 0;
+    for (const ch of text) {
+        width += (/[\x20-\x7e]/.test(ch) ? 0.6 : 1) + 0.05;
     }
+    return width;
+}
+
+type LabelLayout = { lines: string[]; fontSize: number };
+
+/**
+ * カードの幅に合わせて、1行で表示するか、区切り位置で2行に分けるかを決める。
+ * 文字が一番大きく表示できる並べ方を選ぶ (同じなら行数の少ない方)。
+ */
+function chooseLabelLayout(segments: string[], width: number): LabelLayout {
+    const available = Math.max(width - HORIZONTAL_PADDING, 1);
+    const candidates: { lines: string[]; maxFontSize: number }[] = [
+        { lines: [segments.join("")], maxFontSize: MAX_FONT_SIZE_ONE_LINE },
+    ];
+    for (let i = 1; i < segments.length; i += 1) {
+        candidates.push({
+            lines: [segments.slice(0, i).join(""), segments.slice(i).join("")],
+            maxFontSize: MAX_FONT_SIZE_TWO_LINES,
+        });
+    }
+
+    let best: LabelLayout | null = null;
+    for (const { lines, maxFontSize } of candidates) {
+        const widestEm = Math.max(...lines.map(estimateTextWidthEm));
+        const fontSize = Math.max(
+            Math.min(maxFontSize, Math.floor(available / widestEm)),
+            MIN_FONT_SIZE
+        );
+        if (!best || fontSize > best.fontSize) best = { lines, fontSize };
+    }
+    return best ?? { lines: [], fontSize: MAX_FONT_SIZE_ONE_LINE };
 }
 
 export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
@@ -105,17 +166,58 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         },
         ref
     ) {
-        // 表示するテキスト・要素の決定
-        let content: React.ReactNode = card ? formatOperationCard(card) : null;
-        const isEmpty = content === null;
-        const fontSizeStyle =
-            typeof content === "string" && content.length > 10
-                ? "text-xs sm:text-sm px-1 text-center leading-tight"
-                : typeof content === "string" && content.length > 6
-                    ? "text-base sm:text-lg px-2 text-center"
-                    : typeof content === "string" && content.length > 4
-                        ? "text-xl px-2 text-center"
-                        : "text-2xl";
+        // カードの幅を測って、文字の並べ方と大きさを決める
+        const tileRef = useRef<HTMLDivElement | null>(null);
+        const [tileWidth, setTileWidth] = useState<number | null>(null);
+        const setRefs = useCallback(
+            (el: HTMLDivElement | null) => {
+                tileRef.current = el;
+                if (typeof ref === "function") ref(el);
+                else if (ref) ref.current = el;
+            },
+            [ref]
+        );
+        useLayoutEffect(() => {
+            const el = tileRef.current;
+            if (!el) return;
+            setTileWidth(el.offsetWidth);
+            const observer = new ResizeObserver(() => setTileWidth(el.offsetWidth));
+            observer.observe(el);
+            return () => observer.disconnect();
+        }, []);
+
+        const segments = useMemo(
+            () => (card ? getOperationCardSegments(card) : null),
+            [card]
+        );
+        const layout = useMemo(
+            () =>
+                segments && tileWidth !== null
+                    ? chooseLabelLayout(segments, tileWidth)
+                    : null,
+            [segments, tileWidth]
+        );
+        const isEmpty = segments === null;
+
+        // 幅を測る前 (サーバー描画時など) は、区切り位置でだけ折り返す
+        const content: React.ReactNode = isEmpty ? null : layout ? (
+            <span
+                className="flex flex-col items-center text-center leading-[1.2] whitespace-nowrap"
+                style={{ fontSize: `${layout.fontSize}px` }}
+            >
+                {layout.lines.map((line, i) => (
+                    <span key={i}>{line}</span>
+                ))}
+            </span>
+        ) : (
+            <span className="text-center text-base leading-[1.2]">
+                {segments.map((segment, i) => (
+                    <span key={i} className="inline-block">
+                        {segment}
+                    </span>
+                ))}
+            </span>
+        );
 
         let appearanceStyle =
             "bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)]";
@@ -141,7 +243,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
         }
 
         const widthStyle = /\bw-[^\s]+/.test(className) ? "" : "w-48";
-        const baseStyle = `relative flex items-center justify-center ${widthStyle} h-[50px] rounded-[6px] font-serif ${fontSizeStyle} font-medium tracking-wider select-none transition-all duration-150`;
+        const baseStyle = `relative flex items-center justify-center ${widthStyle} h-[50px] rounded-[6px] px-[7px] font-serif font-medium tracking-wider select-none transition-all duration-150`;
 
         const interactiveStyle =
             !disabled && (onClick || onPointerDown)
@@ -152,7 +254,7 @@ export const OperationTile = forwardRef<HTMLDivElement, OperationTileProps>(
 
         return (
             <div
-                ref={ref}
+                ref={setRefs}
                 role={onClick || onPointerDown ? "button" : undefined}
                 tabIndex={onClick || onPointerDown ? 0 : undefined}
                 onClick={!disabled ? onClick : undefined}

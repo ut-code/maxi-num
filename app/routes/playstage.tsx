@@ -103,6 +103,7 @@ function StageGame(props?: Partial<Stage>) {
   const scoreStageNumber = STAGES[stageNumber - 1] ? stageNumber : 1;
 
   const hasNextStage = scoreStageNumber < STAGES.length;
+  const hasPrevStage = scoreStageNumber > 1;
 
   const stage = useMemo(
     () => ({
@@ -1124,6 +1125,38 @@ function StageGame(props?: Partial<Stage>) {
           variant="corner"
         />
       </div>
+
+      {/* 左下の前のステージへ戻るボタン */}
+      {hasPrevStage && (
+        <Link
+          to={`/play/${scoreStageNumber - 1}`}
+          className="group absolute bottom-0 left-0 z-20 inline-flex items-center gap-3 bg-white rounded-tr-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-5 pr-6 py-3 select-none"
+        >
+          <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[#e3e1db] group-hover:bg-[#d6d3cb] group-active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.12)] transition-all duration-150">
+            <svg
+              className="w-7 h-7 sm:w-8 sm:h-8 text-[#6b6862] -translate-x-0.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </span>
+          <span
+            className="text-xl sm:text-2xl font-serif text-[#aba8a1] group-hover:text-[#8a8780] tracking-wider transition-colors duration-150"
+            style={{
+              fontFamily:
+                "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+            }}
+          >
+            前のステージへ
+          </span>
+        </Link>
+      )}
 
       {/* 右下の次のステージへ進むボタン */}
       {hasNextStage && (

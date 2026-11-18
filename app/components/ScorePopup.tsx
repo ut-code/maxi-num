@@ -58,6 +58,13 @@ export function ScorePopup({
     [stageNumber, result, filledAllSlots]
   );
   const hasNextStage = stageNumber < STAGES.length;
+  // 星3つでないときのヒント
+  const hint =
+    stars >= MAX_STARS
+      ? null
+      : !filledAllSlots
+        ? "すべての段にカードを置くと星がもらえます"
+        : "もっと大きい数を作れます！";
 
   const rankingFetcher = useFetcher<typeof loader>();
   const submitFetcher = useFetcher<typeof action>();
@@ -114,14 +121,18 @@ export function ScorePopup({
             <h1 className="text-3xl font-normal text-[#e6e6e6] tracking-[0.15em]">
               あなたのスコア：
             </h1>
-            <div className="mt-6">
+            <div className="mt-5">
               <Stars count={stars} size={76} />
             </div>
+            {/* 星3つでないときはヒントを出す（高さは常に確保してレイアウトを揃える） */}
+            <p className="h-[22px] mt-1 text-sm text-[#f3d08e] tracking-wider">
+              {hint}
+            </p>
 
             <submitFetcher.Form
               method="post"
               action="/api/ranking"
-              className="relative flex items-center w-[425px] h-[60px] mt-4 px-5 rounded-md bg-[#d9d9d9]"
+              className="relative flex items-center w-[425px] h-[60px] mt-2 px-5 rounded-md bg-[#d9d9d9]"
             >
               <input type="hidden" name="stage" value={stageNumber} />
               <input type="hidden" name="result" value={result} />
