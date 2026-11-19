@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef } from "react";
+import { motion } from "framer-motion";
 import { useFetcher } from "react-router";
 import { PageTransitionLink } from "./PageTransitionLink";
 import type { action, loader } from "~/routes/api.ranking";
@@ -104,7 +105,12 @@ export function ScorePopup({
       aria-label="スコア"
       className="fixed inset-0 z-50 overflow-auto bg-[#5f5f5f]/50 font-serif text-[#55524e] select-none"
     >
-      <div className="flex min-h-full items-center justify-center gap-[30px] p-8">
+      <motion.div
+        className="flex min-h-full items-center justify-center gap-[30px] p-8"
+        initial={{ y: "-100%", opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.38, ease: [0.65, 0, 0.35, 1] }}
+      >
         {/* スコア表示 */}
         <section className="relative mt-[140px]">
           <button
@@ -245,7 +251,7 @@ export function ScorePopup({
             </ol>
           )}
         </section>
-      </div>
+      </motion.div>
     </div>
   );
 }

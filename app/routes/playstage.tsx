@@ -1112,7 +1112,6 @@ function StageGame(props?: Partial<Stage>) {
       key={stageNumber}
       className="relative min-h-screen w-full bg-transparent overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
     >
-
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
         <StageHeader
@@ -1606,7 +1605,7 @@ function StageGame(props?: Partial<Stage>) {
             type="button"
             onClick={handleExecute}
             disabled={isExecuting}
-            className="mt-6 w-55 h-16 rounded-xl bg-[#f6ba52] hover:bg-[#efa93c] active:bg-[#e49c2c] active:scale-[0.98] shadow-[0_3px_10px_rgba(244,184,85,0.35)] transition-all duration-150 flex items-center justify-center font-serif text-[#6b5832] text-3xl tracking-[0.25em] pl-[0.25em] select-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+            className="mt-6 w-55 h-16 rounded-xl bg-[#f6ba52] hover:bg-[#efa93c] active:bg-[#e49c2c] hover:scale-110  active:scale-90 shadow-[0_3px_10px_rgba(244,184,85,0.35)] transition-all duration-150 flex items-center justify-center font-serif text-[#6b5832] text-3xl tracking-[0.25em] pl-[0.25em] select-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
             style={{
               fontFamily:
                 "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
