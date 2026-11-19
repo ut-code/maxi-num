@@ -5,7 +5,10 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigate,
 } from "react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
@@ -43,7 +46,66 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  return <Outlet />;
+  const navigate = useNavigate();
+  const [transitionPhase, setTransitionPhase] = useState<
+    "blur" | "clear" | null
+  >(null);
+  const pendingNavigation = useRef<{ to: string; replace?: boolean } | null>(
+    null
+  );
+
+  useEffect(() => {
+    const handleNavigation = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        to: string;
+        replace?: boolean;
+      };
+      pendingNavigation.current = detail;
+      setTransitionPhase("blur");
+    };
+
+    window.addEventListener("page-transition:navigate", handleNavigation);
+    return () =>
+      window.removeEventListener("page-transition:navigate", handleNavigation);
+  }, []);
+
+  return (
+    <>
+      <Outlet />
+      <AnimatePresence>
+        {transitionPhase === "blur" && (
+          <motion.div
+            key="blur"
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
+            initial={{ backdropFilter: "blur(0px)" }}
+            animate={{ backdropFilter: "blur(30px)" }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            onAnimationComplete={() => {
+              const pending = pendingNavigation.current;
+              if (!pending) return;
+              pendingNavigation.current = null;
+              navigate(pending.to, { replace: pending.replace });
+              setTransitionPhase("clear");
+            }}
+          />
+        )}
+        {transitionPhase === "clear" && (
+          <motion.div
+            key="clear"
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-0 z-[100]"
+            initial={{ backdropFilter: "blur(30px)" }}
+            animate={{ backdropFilter: "blur(0px)" }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            onAnimationComplete={() => setTransitionPhase(null)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

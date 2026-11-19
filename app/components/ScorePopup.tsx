@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef } from "react";
-import { Link, useFetcher } from "react-router";
+import { useFetcher } from "react-router";
+import { PageTransitionLink } from "./PageTransitionLink";
 import type { action, loader } from "~/routes/api.ranking";
 import { calculateStars } from "~/score";
 import { STAGES } from "~/stages";
@@ -182,19 +183,19 @@ export function ScorePopup({
             </submitFetcher.Form>
 
             <div className="flex gap-[20px] mt-4">
-              <Link
+              <PageTransitionLink
                 to="/stages"
                 className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#d9d9d9] hover:bg-[#cfcfcf] text-sm text-[#6b6b6b] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
               >
                 ステージ選択へ
-              </Link>
+              </PageTransitionLink>
               {hasNextStage ? (
-                <Link
+                <PageTransitionLink
                   to={`/play/${stageNumber + 1}`}
                   className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#efbc62] hover:bg-[#e9ad45] text-sm text-[#6b5832] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
                 >
                   次のステージへ
-                </Link>
+                </PageTransitionLink>
               ) : (
                 <span className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#efbc62] opacity-50 text-sm text-[#6b5832] tracking-wider">
                   次のステージへ

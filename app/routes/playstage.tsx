@@ -7,12 +7,13 @@ import {
   getCardLaneSpan,
   isUnaryCard,
 } from "~/game";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
+import { PageTransitionLink } from "~/components/PageTransitionLink";
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
-import { FallingBackground } from "~/components/FallingBackground";
 import { HelpModal } from "~/components/HelpModal";
+import { FallingBackground } from "~/components/FallingBackground";
 
 export function meta() {
   return [{ title: "MaxiNum" }, { name: "description", content: "プレイ画面" }];
@@ -1126,7 +1127,7 @@ function StageGame(props?: Partial<Stage>) {
 
       {/* 左下の前のステージへ戻るボタン */}
       {hasPrevStage && (
-        <Link
+        <PageTransitionLink
           to={`/play/${scoreStageNumber - 1}`}
           className="group absolute bottom-0 left-0 z-20 inline-flex items-center gap-3 bg-white rounded-tr-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-5 pr-6 py-3 select-none"
         >
@@ -1153,12 +1154,12 @@ function StageGame(props?: Partial<Stage>) {
           >
             前のステージへ
           </span>
-        </Link>
+        </PageTransitionLink>
       )}
 
       {/* 右下の次のステージへ進むボタン */}
       {hasNextStage && (
-        <Link
+        <PageTransitionLink
           to={`/play/${scoreStageNumber + 1}`}
           className="group absolute bottom-0 right-0 z-20 inline-flex items-center gap-3 bg-white rounded-tl-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-6 pr-5 py-3 select-none"
         >
@@ -1185,7 +1186,7 @@ function StageGame(props?: Partial<Stage>) {
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </span>
-        </Link>
+        </PageTransitionLink>
       )}
 
       <div className="absolute right-3 top-3 z-20">

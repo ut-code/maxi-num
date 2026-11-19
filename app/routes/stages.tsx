@@ -1,7 +1,7 @@
 import type { Route } from "./+types/stages";
 import { SelectButton } from "~/components/SelectButton";
-import { FallingBackground } from "~/components/FallingBackground";
 import { BackButton } from "~/components/StageHeader";
+import { FallingBackground } from "~/components/FallingBackground";
 
 export const STAGE_COUNT = 6;
 const COLUMNS = 3;

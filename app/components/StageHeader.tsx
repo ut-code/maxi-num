@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { PageTransitionLink } from "./PageTransitionLink";
 
 export type StageHeaderProps = {
   /**
@@ -48,7 +48,7 @@ export function BackButton({
   iconClassName = "w-5 h-5",
 }: BackButtonProps) {
   return (
-    <Link
+    <PageTransitionLink
       to={to}
       onClick={onClick}
       aria-label={label}
@@ -65,7 +65,7 @@ export function BackButton({
       >
         <polyline points="15 18 9 12 15 6" />
       </svg>
-    </Link>
+    </PageTransitionLink>
   );
 }
 
