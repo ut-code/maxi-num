@@ -3,14 +3,23 @@ import { Link, type LinkProps } from "react-router";
 type PageTransitionDetail = {
   to: string;
   replace?: boolean;
+  transition: "blur" | "slide";
+  slideDirection?: 1 | -1;
+};
+
+type TransitionLinkProps = LinkProps & {
+  transition?: "blur" | "slide";
+  slideDirection?: 1 | -1;
 };
 
 export function PageTransitionLink({
   to,
   replace,
   onClick,
+  transition = "blur",
+  slideDirection,
   ...props
-}: LinkProps) {
+}: TransitionLinkProps) {
   return (
     <Link
       {...props}
@@ -35,6 +44,8 @@ export function PageTransitionLink({
             detail: {
               to: typeof to === "string" ? to : to.pathname ?? "",
               replace,
+              transition,
+              slideDirection,
             },
           }),
         );

@@ -1,7 +1,6 @@
 import type { Route } from "./+types/stages";
 import { SelectButton } from "~/components/SelectButton";
 import { BackButton } from "~/components/StageHeader";
-import { FallingBackground } from "~/components/FallingBackground";
 
 export const STAGE_COUNT = 6;
 const COLUMNS = 3;
@@ -14,14 +13,14 @@ export function meta({}: Route.MetaArgs) {
 
 export default function StageSelect() {
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-[#f7f5f0] flex flex-col items-center pt-16 sm:pt-24 pb-16 px-4 sm:px-8">
-      {/* ホーム画面と同じ背景 */}
-      <FallingBackground />
+    <main className="relative min-h-screen w-full overflow-hidden bg-transparent flex flex-col items-center pt-16 sm:pt-24 pb-16 px-4 sm:px-8">
 
       {/* 左上のホームに戻るボタン */}
       <div className="absolute top-4 left-4 z-20">
         <BackButton
           to="/"
+          transition="slide"
+          slideDirection={-1}
           label="ホームに戻る"
           className="w-12 h-12 sm:w-14 sm:h-14"
           iconClassName="w-7 h-7 sm:w-8 sm:h-8"

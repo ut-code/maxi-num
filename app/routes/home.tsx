@@ -1,5 +1,4 @@
 import { PageTransitionLink } from "~/components/PageTransitionLink";
-import { FallingBackground } from "~/components/FallingBackground";
 import type { Route } from "./+types/home";
 
 export function meta({}: Route.MetaArgs) {
@@ -11,8 +10,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#f7f5f0] flex flex-col items-center justify-center select-none">
-      <FallingBackground />
+    <div className="relative w-screen h-screen overflow-hidden bg-transparent flex flex-col items-center justify-center select-none">
 
       {/* メインコンテンツ */}
       <div className="relative z-10 flex flex-col items-center justify-center -translate-y-4">
@@ -30,6 +28,8 @@ export default function Home() {
         {/* 開始ボタン */}
         <PageTransitionLink
           to="/stages"
+          transition="slide"
+          slideDirection={1}
           className="group relative inline-flex items-center justify-center w-64 md:w-72 py-4 rounded-xl text-xl md:text-2xl font-serif text-[#6b5832] bg-[#f4b855] hover:bg-[#efa93c] active:bg-[#e49c2c] shadow-[0_6px_14px_rgba(224,157,48,0.35)] hover:shadow-[0_8px_18px_rgba(224,157,48,0.45)] transition-all duration-200 ease-out active:translate-y-0.5 hover:scale-110 active:scale-90"
           style={{
             fontFamily:

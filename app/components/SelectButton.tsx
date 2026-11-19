@@ -15,6 +15,7 @@ export function SelectButton({
   return (
     <PageTransitionLink
       to={targetUrl}
+      transition="blur"
       className={`flex items-center justify-center aspect-square w-full bg-[#616161] hover:bg-[#525252] active:bg-[#3d3d3d] text-white text-5xl font-serif select-none transition-all duration-150 hover:scale-110 active:scale-90 ${className}`}
     >
       {stageNumber}

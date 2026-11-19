@@ -13,7 +13,6 @@ import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
 import { HelpModal } from "~/components/HelpModal";
-import { FallingBackground } from "~/components/FallingBackground";
 
 export function meta() {
   return [{ title: "MaxiNum" }, { name: "description", content: "プレイ画面" }];
@@ -1111,10 +1110,8 @@ function StageGame(props?: Partial<Stage>) {
   return (
     <main
       key={stageNumber}
-      className="relative min-h-screen w-full bg-[#faf8f3] overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
+      className="relative min-h-screen w-full bg-transparent overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
     >
-      {/* 背景：ホーム画面と同じ四角形のアニメーション（数字は流さない） */}
-      <FallingBackground showNumbers={false} />
 
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
@@ -1129,6 +1126,8 @@ function StageGame(props?: Partial<Stage>) {
       {hasPrevStage && (
         <PageTransitionLink
           to={`/play/${scoreStageNumber - 1}`}
+          transition="slide"
+          slideDirection={-1}
           className="group absolute bottom-0 left-0 z-20 inline-flex items-center gap-3 bg-white rounded-tr-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-5 pr-6 py-3 select-none"
         >
           <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[#e3e1db] group-hover:bg-[#d6d3cb] group-active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.12)] transition-all duration-150">
@@ -1161,6 +1160,8 @@ function StageGame(props?: Partial<Stage>) {
       {hasNextStage && (
         <PageTransitionLink
           to={`/play/${scoreStageNumber + 1}`}
+          transition="slide"
+          slideDirection={1}
           className="group absolute bottom-0 right-0 z-20 inline-flex items-center gap-3 bg-white rounded-tl-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-6 pr-5 py-3 select-none"
         >
           <span

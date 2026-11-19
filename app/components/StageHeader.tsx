@@ -33,6 +33,8 @@ export type BackButtonProps = {
   // 読み上げ用のラベル
   label?: string;
   onClick?: () => void;
+  transition?: "blur" | "slide";
+  slideDirection?: 1 | -1;
   // ボタンの大きさなど
   className?: string;
   // 矢印の大きさ
@@ -44,12 +46,16 @@ export function BackButton({
   to,
   label = "ステージ選択に戻る",
   onClick,
+  transition,
+  slideDirection,
   className = "w-10 h-10",
   iconClassName = "w-5 h-5",
 }: BackButtonProps) {
   return (
     <PageTransitionLink
       to={to}
+      transition={transition ?? "blur"}
+      slideDirection={slideDirection}
       onClick={onClick}
       aria-label={label}
       className={`z-10 flex items-center justify-center rounded-xl bg-[#eceae5] hover:bg-[#e1ded8] active:bg-[#d6d3cc] shadow-[0_2px_4px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 ${className}`}
