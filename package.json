@@ -18,11 +18,13 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "drizzle-orm": "^0.45.4",
+    "framer-motion": "^14.14.0",
     "isbot": "^5.1.36",
     "postgres": "^3.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^8.5.0"
+    "react-router": "^8.5.0",
+    "react-slide-routes": "^3.1.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.69.1",

@@ -7,11 +7,11 @@ import {
   getCardLaneSpan,
   isUnaryCard,
 } from "~/game";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
+import { PageTransitionLink } from "~/components/PageTransitionLink";
 import { StageHeader } from "~/components/StageHeader";
 import { OperationTile } from "~/components/OperationTile";
 import { ScorePopup } from "~/components/ScorePopup";
-import { FallingBackground } from "~/components/FallingBackground";
 import { HelpModal } from "~/components/HelpModal";
 
 export function meta() {
@@ -120,7 +120,7 @@ function StageGame(props?: Partial<Stage>) {
       currentStage.startNums,
       currentStage.cards,
       currentStage.fixedCards,
-    ],
+    ]
   );
 
   const laneCount = stage.startNums.length;
@@ -163,12 +163,12 @@ function StageGame(props?: Partial<Stage>) {
 
       return rows;
     },
-    [SLOT_COUNT, fixedCardsList],
+    [SLOT_COUNT, fixedCardsList]
   );
 
   // 左側のスロット行状態
   const [placedRows, setPlacedRows] = useState<RowSlotState[]>(() =>
-    createInitialRows(stage.startNums.length),
+    createInitialRows(stage.startNums.length)
   );
 
   // 出力結果表示用の合計値（プレイ前は非表示）
@@ -238,7 +238,7 @@ function StageGame(props?: Partial<Stage>) {
       const fixedIdx = -index - 1;
       return fixedCardsList[fixedIdx]?.card;
     },
-    [stageCards, fixedCardsList],
+    [stageCards, fixedCardsList]
   );
 
   // トレイ用のカードリスト
@@ -265,7 +265,7 @@ function StageGame(props?: Partial<Stage>) {
         if (row.cols.includes(originalIndex)) return true;
         if (
           row.wideCards.some(
-            (placement) => placement.originalIndex === originalIndex,
+            (placement) => placement.originalIndex === originalIndex
           )
         ) {
           return true;
@@ -273,7 +273,7 @@ function StageGame(props?: Partial<Stage>) {
       }
       return false;
     },
-    [placedRows],
+    [placedRows]
   );
 
   const getSourceCardIndex = useCallback(
@@ -282,7 +282,7 @@ function StageGame(props?: Partial<Stage>) {
       if (source.type === "slotWide") return source.originalIndex;
       return placedRows[source.row].cols[source.col];
     },
-    [placedRows],
+    [placedRows]
   );
 
   // ----------------------------------------------------
@@ -293,7 +293,7 @@ function StageGame(props?: Partial<Stage>) {
       x: number,
       y: number,
       card: Card,
-      ignoredCardIndex?: number,
+      ignoredCardIndex?: number
     ): DropTarget | null => {
       const isUnary = isUnaryCard(card);
       const laneSpan = getCardLaneSpan(card, laneCount);
@@ -307,7 +307,7 @@ function StageGame(props?: Partial<Stage>) {
           (placement) =>
             placement.originalIndex !== ignoredCardIndex &&
             lane >= placement.startLane &&
-            lane < placement.startLane + placement.laneSpan,
+            lane < placement.startLane + placement.laneSpan
         );
       };
 
@@ -331,7 +331,7 @@ function StageGame(props?: Partial<Stage>) {
               ) {
                 const lanesAvailable = Array.from(
                   { length: laneSpan },
-                  (_, index) => isLaneAvailable(r, startLane + index),
+                  (_, index) => isLaneAvailable(r, startLane + index)
                 ).every(Boolean);
                 if (!lanesAvailable) continue;
 
@@ -408,7 +408,7 @@ function StageGame(props?: Partial<Stage>) {
 
       return null;
     },
-    [SLOT_COUNT, laneCount, placedRows],
+    [SLOT_COUNT, laneCount, placedRows]
   );
 
   // ----------------------------------------------------
@@ -468,7 +468,7 @@ function StageGame(props?: Partial<Stage>) {
               startLane:
                 sourceRow?.wideCards.find(
                   (placement) =>
-                    placement.originalIndex === source.originalIndex,
+                    placement.originalIndex === source.originalIndex
                 )?.startLane ?? 0,
             }
           : source.type === "slotLane"
@@ -478,7 +478,7 @@ function StageGame(props?: Partial<Stage>) {
       setHoveredTarget(initialHit);
       setErrorMessage(null);
     },
-    [isExecuting, getHitTarget, placedRows],
+    [isExecuting, getHitTarget, placedRows]
   );
 
   useEffect(() => {
@@ -488,7 +488,7 @@ function StageGame(props?: Partial<Stage>) {
       if (dragStartPosRef.current) {
         const dist = Math.hypot(
           e.clientX - dragStartPosRef.current.x,
-          e.clientY - dragStartPosRef.current.y,
+          e.clientY - dragStartPosRef.current.y
         );
         if (dist > 5) {
           hasMovedRef.current = true;
@@ -502,7 +502,7 @@ function StageGame(props?: Partial<Stage>) {
               pointerX: e.clientX,
               pointerY: e.clientY,
             }
-          : null,
+          : null
       );
 
       setHoveredTarget(
@@ -510,8 +510,8 @@ function StageGame(props?: Partial<Stage>) {
           e.clientX,
           e.clientY,
           dragState.card,
-          getSourceCardIndex(dragState.source) ?? undefined,
-        ),
+          getSourceCardIndex(dragState.source) ?? undefined
+        )
       );
     };
 
@@ -522,7 +522,7 @@ function StageGame(props?: Partial<Stage>) {
           e.clientX,
           e.clientY,
           currentDrag.card,
-          getSourceCardIndex(currentDrag.source) ?? undefined,
+          getSourceCardIndex(currentDrag.source) ?? undefined
         ) ?? hoveredTarget;
 
       setDragState(null);
@@ -541,10 +541,10 @@ function StageGame(props?: Partial<Stage>) {
             return {
               type: "lanes" as const,
               cols: row.cols.map((colIdx) =>
-                colIdx === cardIndex ? null : colIdx,
+                colIdx === cardIndex ? null : colIdx
               ),
               wideCards: row.wideCards.filter(
-                (placement) => placement.originalIndex !== cardIndex,
+                (placement) => placement.originalIndex !== cardIndex
               ),
             };
           });
@@ -576,7 +576,7 @@ function StageGame(props?: Partial<Stage>) {
             next[fromRow] = {
               ...next[fromRow],
               wideCards: next[fromRow].wideCards.filter(
-                (placement) => placement.originalIndex !== origIdx,
+                (placement) => placement.originalIndex !== origIdx
               ),
             };
             return next;
@@ -670,7 +670,7 @@ function StageGame(props?: Partial<Stage>) {
     (
       source:
         | { type: "wide"; row: number; originalIndex: number }
-        | { type: "lane"; row: number; col: number },
+        | { type: "lane"; row: number; col: number }
     ) => {
       if (isExecuting) return;
       const holdDuration = Date.now() - dragStartTimeRef.current;
@@ -682,7 +682,7 @@ function StageGame(props?: Partial<Stage>) {
           next[source.row] = {
             ...next[source.row],
             wideCards: next[source.row].wideCards.filter(
-              (placement) => placement.originalIndex !== source.originalIndex,
+              (placement) => placement.originalIndex !== source.originalIndex
             ),
           };
         } else {
@@ -694,7 +694,7 @@ function StageGame(props?: Partial<Stage>) {
       });
       setErrorMessage(null);
     },
-    [isExecuting],
+    [isExecuting]
   );
 
   // ----------------------------------------------------
@@ -758,7 +758,7 @@ function StageGame(props?: Partial<Stage>) {
                 "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
             };
           })
-        : null,
+        : null
     );
     await new Promise((r) => setTimeout(r, 220));
 
@@ -782,7 +782,7 @@ function StageGame(props?: Partial<Stage>) {
                   "left 180ms cubic-bezier(0.2, 0.8, 0.2, 1), top 180ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               };
             })
-          : null,
+          : null
       );
       await new Promise((r) => setTimeout(r, 200));
 
@@ -790,11 +790,11 @@ function StageGame(props?: Partial<Stage>) {
         ...rowState.wideCards.flatMap((placement) =>
           Array.from(
             { length: placement.laneSpan },
-            (_, index) => placement.startLane + index,
-          ),
+            (_, index) => placement.startLane + index
+          )
         ),
         ...rowState.cols.flatMap((cardIndex, colIdx) =>
-          cardIndex === null ? [] : [colIdx],
+          cardIndex === null ? [] : [colIdx]
         ),
       ];
       let nextVals = [...currentVals];
@@ -810,7 +810,7 @@ function StageGame(props?: Partial<Stage>) {
           if (!card) continue;
           const inputs = currentVals.slice(
             placement.startLane,
-            placement.startLane + placement.laneSpan,
+            placement.startLane + placement.laneSpan
           );
           const result = applyCard(inputs, card);
           if (!result.success) {
@@ -857,7 +857,7 @@ function StageGame(props?: Partial<Stage>) {
                 scale: activeCols.includes(colIdx) ? 1.25 : 1,
                 transition: "transform 180ms ease-in-out",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 450));
         setActiveRow(null);
@@ -876,7 +876,7 @@ function StageGame(props?: Partial<Stage>) {
                 isPopping: activeCols.includes(colIdx),
                 transition: "transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1)",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 160));
 
@@ -888,7 +888,7 @@ function StageGame(props?: Partial<Stage>) {
                 isPopping: false,
                 transition: "transform 140ms ease-out",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 180));
       } else {
@@ -920,7 +920,7 @@ function StageGame(props?: Partial<Stage>) {
                 y: avgCenter.y,
                 transition: "top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -933,7 +933,7 @@ function StageGame(props?: Partial<Stage>) {
                 x: avgCenter.x,
                 transition: "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -960,7 +960,7 @@ function StageGame(props?: Partial<Stage>) {
                 isPopping: false,
                 transition: "transform 140ms ease-out",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 160));
         setIsTotalActive(false);
@@ -980,7 +980,7 @@ function StageGame(props?: Partial<Stage>) {
                 transition:
                   "left 220ms cubic-bezier(0.2, 0.8, 0.2, 1), top 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 240));
 
@@ -995,7 +995,7 @@ function StageGame(props?: Partial<Stage>) {
                 opacity: 0,
                 transition: "transform 200ms ease-out, opacity 200ms ease-out",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 220));
       } else {
@@ -1014,7 +1014,7 @@ function StageGame(props?: Partial<Stage>) {
                 transition:
                   "left 200ms cubic-bezier(0.2, 0.8, 0.2, 1), top 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 220));
 
@@ -1028,7 +1028,7 @@ function StageGame(props?: Partial<Stage>) {
                 opacity: 0,
                 transition: "transform 200ms ease-out, opacity 200ms ease-out",
               }))
-            : null,
+            : null
         );
         await new Promise((r) => setTimeout(r, 220));
       }
@@ -1055,9 +1055,9 @@ function StageGame(props?: Partial<Stage>) {
             row.wideCards.some(
               (placement) =>
                 lane >= placement.startLane &&
-                lane < placement.startLane + placement.laneSpan,
-            ),
-        ),
+                lane < placement.startLane + placement.laneSpan
+            )
+        )
       );
 
       setScore({
@@ -1110,11 +1110,8 @@ function StageGame(props?: Partial<Stage>) {
   return (
     <main
       key={stageNumber}
-      className="relative min-h-screen w-full bg-[#faf8f3] overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
+      className="relative min-h-screen w-full bg-transparent overflow-hidden flex flex-col items-center justify-center p-4 select-none touch-none"
     >
-      {/* 背景：ホーム画面と同じ四角形のアニメーション（数字は流さない） */}
-      <FallingBackground showNumbers={false} />
-
       {/* 左上のヘッダー（戻るボタンとステージ表示） */}
       <div className="absolute top-0 left-0 z-20">
         <StageHeader
@@ -1126,8 +1123,10 @@ function StageGame(props?: Partial<Stage>) {
 
       {/* 左下の前のステージへ戻るボタン */}
       {hasPrevStage && (
-        <Link
+        <PageTransitionLink
           to={`/play/${scoreStageNumber - 1}`}
+          transition="slide"
+          slideDirection={-1}
           className="group absolute bottom-0 left-0 z-20 inline-flex items-center gap-3 bg-white rounded-tr-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-5 pr-6 py-3 select-none"
         >
           <span className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-[#e3e1db] group-hover:bg-[#d6d3cb] group-active:scale-95 shadow-[0_2px_4px_rgba(0,0,0,0.12)] transition-all duration-150">
@@ -1145,7 +1144,7 @@ function StageGame(props?: Partial<Stage>) {
             </svg>
           </span>
           <span
-            className="text-xl sm:text-2xl font-serif text-[#aba8a1] group-hover:text-[#8a8780] tracking-wider transition-colors duration-150"
+            className="text-xl sm:text-2xl font-serif text-[#333] tracking-wider transition-colors duration-150"
             style={{
               fontFamily:
                 "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
@@ -1153,17 +1152,19 @@ function StageGame(props?: Partial<Stage>) {
           >
             前のステージへ
           </span>
-        </Link>
+        </PageTransitionLink>
       )}
 
       {/* 右下の次のステージへ進むボタン */}
       {hasNextStage && (
-        <Link
+        <PageTransitionLink
           to={`/play/${scoreStageNumber + 1}`}
+          transition="slide"
+          slideDirection={1}
           className="group absolute bottom-0 right-0 z-20 inline-flex items-center gap-3 bg-white rounded-tl-3xl shadow-[0_-2px_8px_rgba(0,0,0,0.06)] pl-6 pr-5 py-3 select-none"
         >
           <span
-            className="text-xl sm:text-2xl font-serif text-[#aba8a1] group-hover:text-[#8a8780] tracking-wider transition-colors duration-150"
+            className="text-xl sm:text-2xl font-serif text-[#333] tracking-wider transition-colors duration-150"
             style={{
               fontFamily:
                 "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
@@ -1185,7 +1186,7 @@ function StageGame(props?: Partial<Stage>) {
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </span>
-        </Link>
+        </PageTransitionLink>
       )}
 
       <div className="absolute right-3 top-3 z-20">
@@ -1299,7 +1300,7 @@ function StageGame(props?: Partial<Stage>) {
                     const coveringWideCard = rowState.wideCards.some(
                       (placement) =>
                         colIdx >= placement.startLane &&
-                        colIdx < placement.startLane + placement.laneSpan,
+                        colIdx < placement.startLane + placement.laneSpan
                     );
 
                     const isCellActive =
@@ -1355,7 +1356,7 @@ function StageGame(props?: Partial<Stage>) {
                                       row: rowIdx,
                                       col: colIdx,
                                     },
-                                    card,
+                                    card
                                   )
                               : undefined
                           }
@@ -1403,7 +1404,7 @@ function StageGame(props?: Partial<Stage>) {
                         hoveredTarget.startLane === placement.startLane;
                       const isCardActive = Array.from(
                         { length: placement.laneSpan },
-                        (_, index) => placement.startLane + index,
+                        (_, index) => placement.startLane + index
                       ).some((colIdx) => activeLanes.includes(colIdx));
 
                       return (
@@ -1425,7 +1426,7 @@ function StageGame(props?: Partial<Stage>) {
                                       row: rowIdx,
                                       originalIndex: placement.originalIndex,
                                     },
-                                    card,
+                                    card
                                   )
                               : undefined
                           }
@@ -1583,7 +1584,7 @@ function StageGame(props?: Partial<Stage>) {
                                   type: "tray",
                                   originalIndex: item.originalIndex,
                                 },
-                                item.card,
+                                item.card
                               )
                           : undefined
                       }
@@ -1604,7 +1605,7 @@ function StageGame(props?: Partial<Stage>) {
             type="button"
             onClick={handleExecute}
             disabled={isExecuting}
-            className="mt-6 w-44 sm:w-48 h-[46px] rounded-xl bg-[#f6ba52] hover:bg-[#efa93c] active:bg-[#e49c2c] active:scale-[0.98] shadow-[0_3px_10px_rgba(244,184,85,0.35)] transition-all duration-150 flex items-center justify-center font-serif text-[#6b5832] text-xl tracking-[0.25em] pl-[0.25em] select-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+            className="mt-6 w-55 h-16 rounded-xl bg-[#f6ba52] hover:bg-[#efa93c] active:bg-[#e49c2c] hover:scale-110  active:scale-90 shadow-[0_3px_10px_rgba(244,184,85,0.35)] transition-all duration-150 flex items-center justify-center font-serif text-[#6b5832] text-3xl tracking-[0.25em] pl-[0.25em] select-none cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
             style={{
               fontFamily:
                 "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",

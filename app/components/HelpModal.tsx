@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { formatOperationCard } from "~/components/OperationTile";
 import type { Card, Stage } from "~/stages";
 
@@ -103,24 +104,33 @@ export function HelpModal({ stage }: HelpModalProps) {
         aria-expanded={isOpen}
         aria-controls={dialogId}
         onClick={() => setIsOpen(true)}
-        className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-3xl font-serif text-[#504d49] shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition-colors hover:bg-[#f1efe9] active:scale-95"
+        className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl font-serif text-[#504d49] shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition hover:scale-110 active:scale-90 bg-[#f6ba52] hover:bg-[#efa93c] active:bg-[#e49c2c] font-bold"
       >
         ?
       </button>
 
-      {isOpen && (
-        <div
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.38 }}
           onClick={(event) => {
             if (event.target === event.currentTarget) setIsOpen(false);
           }}
-        >
-          <section
+          >
+          <motion.section
             id={dialogId}
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${dialogId}-title`}
             className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            initial={{ y: "-100%", opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "-100%", opacity: 0 }}
+            transition={{ duration: 0.38, ease: [0.65, 0, 0.35, 1] }}
           >
             <header className="flex items-center justify-between border-b border-[#e8e6df] px-8 py-6">
               <h2 id={`${dialogId}-title`} className="text-2xl text-[#383631]">
@@ -157,9 +167,10 @@ export function HelpModal({ stage }: HelpModalProps) {
                 <CardList cards={cards} />
               </section>
             </div>
-          </section>
-        </div>
-      )}
+          </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }
