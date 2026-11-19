@@ -39,11 +39,12 @@ function parseStageNumber(value: unknown) {
 async function getRanking(
   env: SupabaseEnv,
   stageNumber: number,
-  myEntryId: number | null
+  myEntryId: number | null,
 ) {
-  const { data: rows, error } = await getSupabase(env).from("scores").select(
-    "id,name,result,stars"
-  ).eq("stageNumber", stageNumber)
+  const { data: rows, error } = await getSupabase(env)
+    .from("scores")
+    .select("id,name,result,stars")
+    .eq("stageNumber", stageNumber)
     // 星の数で並べてから、同じ星の中を数値の大きい順に並べる
     .order("stars", { ascending: false })
     .order("result", { ascending: false })
@@ -55,14 +56,17 @@ async function getRanking(
   let rank = 0;
   const entries = rows.map((row, i) => {
     const prev = rows[i - 1];
-    if (i === 0 || row.stars !== prev.stars || row.result !== prev.result) rank = i + 1;
+    if (i === 0 || row.stars !== prev.stars || row.result !== prev.result)
+      rank = i + 1;
     return { id: row.id, rank, name: row.name, stars: row.stars };
   });
 
   // 同じ順位の人がいるときは、自分を同じ順位の中の一番上に表示する
   const myIndex = entries.findIndex((entry) => entry.id === myEntryId);
   if (myIndex > 0) {
-    const firstIndexOfRank = entries.findIndex((entry) => entry.rank === entries[myIndex].rank);
+    const firstIndexOfRank = entries.findIndex(
+      (entry) => entry.rank === entries[myIndex].rank,
+    );
     const [myEntry] = entries.splice(myIndex, 1);
     entries.splice(firstIndexOfRank, 0, myEntry);
   }
@@ -75,14 +79,20 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const stageNumber = parseStageNumber(url.searchParams.get("stage"));
   if (stageNumber === null) {
-    return data<RankingResponse>({ error: "ステージが見つかりません" }, { status: 400 });
+    return data<RankingResponse>(
+      { error: "ステージが見つかりません" },
+      { status: 400 },
+    );
   }
 
   try {
     return data<RankingResponse>(await getRanking(env, stageNumber, null));
   } catch (error) {
     console.error(error);
-    return data<RankingResponse>({ error: "ランキングを読み込めませんでした" }, { status: 500 });
+    return data<RankingResponse>(
+      { error: "ランキングを読み込めませんでした" },
+      { status: 500 },
+    );
   }
 }
 
@@ -91,19 +101,26 @@ export async function action({ request, context }: Route.ActionArgs) {
   const formData = await request.formData();
   const stageNumber = parseStageNumber(formData.get("stage"));
   const result = Number(formData.get("result"));
-  const usedAllCards = formData.get("usedAllCards") === "true";
   const filledAllSlots = formData.get("filledAllSlots") === "true";
   const name =
-    String(formData.get("name") ?? "").trim().slice(0, NAME_MAX_LENGTH) || DEFAULT_NAME;
+    String(formData.get("name") ?? "")
+      .trim()
+      .slice(0, NAME_MAX_LENGTH) || DEFAULT_NAME;
 
   if (stageNumber === null) {
-    return data<RankingResponse>({ error: "ステージが見つかりません" }, { status: 400 });
+    return data<RankingResponse>(
+      { error: "ステージが見つかりません" },
+      { status: 400 },
+    );
   }
   const stage = STAGES[stageNumber - 1];
   // 申告されたカード使用数・スロット充填状態で出せない数値は受け付けない
-  const results = resultsForPlacement(stage, usedAllCards, filledAllSlots);
+  const results = resultsForPlacement(stage, filledAllSlots);
   if (!results.includes(result)) {
-    return data<RankingResponse>({ error: "スコアが正しくありません" }, { status: 400 });
+    return data<RankingResponse>(
+      { error: "スコアが正しくありません" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -118,9 +135,14 @@ export async function action({ request, context }: Route.ActionArgs) {
       .select("id")
       .single();
     if (error) throw error;
-    return data<RankingResponse>(await getRanking(env, stageNumber, inserted.id));
+    return data<RankingResponse>(
+      await getRanking(env, stageNumber, inserted.id),
+    );
   } catch (error) {
     console.error(error);
-    return data<RankingResponse>({ error: "スコアを送信できませんでした" }, { status: 500 });
+    return data<RankingResponse>(
+      { error: "スコアを送信できませんでした" },
+      { status: 500 },
+    );
   }
 }

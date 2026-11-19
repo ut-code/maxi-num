@@ -189,7 +189,6 @@ function StageGame(props?: Partial<Stage>) {
   const [score, setScore] = useState<{
     stageNumber: number;
     result: number;
-    usedAllCards: boolean;
     filledAllSlots: boolean;
   } | null>(null);
 
@@ -1049,7 +1048,6 @@ function StageGame(props?: Partial<Stage>) {
           }
         }
       }
-      const usedAllCards = placedSet.size === stageCards.length;
       const filledAllSlots = placedRows.every((row) =>
         row.cols.every(
           (idx, lane) =>
@@ -1065,7 +1063,6 @@ function StageGame(props?: Partial<Stage>) {
       setScore({
         stageNumber: scoreStageNumber,
         result: totalScore,
-        usedAllCards,
         filledAllSlots,
       });
     }
@@ -1664,7 +1661,6 @@ function StageGame(props?: Partial<Stage>) {
         <ScorePopup
           stageNumber={score.stageNumber}
           result={score.result}
-          usedAllCards={score.usedAllCards}
           filledAllSlots={score.filledAllSlots}
           onClose={() => setScore(null)}
         />

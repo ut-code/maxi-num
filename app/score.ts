@@ -36,15 +36,12 @@ export function arrangements<T>(items: readonly T[]): T[][] {
   return [
     [],
     ...items.flatMap((item, i) =>
-      arrangements([...items.slice(0, i), ...items.slice(i + 1)]).map((rest) => [
-        item,
-        ...rest,
-      ])
+      arrangements([...items.slice(0, i), ...items.slice(i + 1)]).map(
+        (rest) => [item, ...rest]
+      )
     ),
   ];
 }
-
-
 
 type CardPlacement = {
   card: Card;
@@ -142,7 +139,10 @@ function applyRow(
   return next;
 }
 
-function fillsAllSlots(placements: CardPlacement[], laneCount: number): boolean {
+function fillsAllSlots(
+  placements: CardPlacement[],
+  laneCount: number
+): boolean {
   const occupied = Array.from({ length: laneCount }, () => false);
   for (const placement of placements) {
     for (
@@ -159,7 +159,7 @@ function fillsAllSlots(placements: CardPlacement[], laneCount: number): boolean 
 // 固定カードの配置を保ったまま手札カードを配置して実行結果をシミュレート
 function resultsWithFixedCards(
   stage: Stage,
-  constraints: { requireAllCardsUsed?: boolean; requireFilledSlots?: boolean } = {}
+  requireFilledSlots?: boolean
 ): number[] {
   const laneCount = stage.startNums.length;
   const fixedCards = stage.fixedCards ?? [];
@@ -170,7 +170,7 @@ function resultsWithFixedCards(
     const laneSpan = getCardLaneSpan(fc.card, laneCount);
     const startLane =
       laneSpan === 1
-        ? fc.lane ?? 0
+        ? (fc.lane ?? 0)
         : Math.min(fc.lane ?? 0, laneCount - laneSpan);
     if (startLane < 0 || startLane + laneSpan > laneCount) continue;
 
@@ -185,9 +185,7 @@ function resultsWithFixedCards(
   ): Map<number, Set<number>> => {
     if (row === SLOT_COUNT) {
       const total = calculateTotalScore(current);
-      return total.success
-        ? new Map([[0, new Set([total.value])]])
-        : new Map();
+      return total.success ? new Map([[0, new Set([total.value])]]) : new Map();
     }
 
     const key = JSON.stringify([row, current, remainingCards]);
@@ -200,17 +198,15 @@ function resultsWithFixedCards(
       laneCount,
       fixedRows[row]
     )) {
-      if (
-        constraints.requireFilledSlots &&
-        !fillsAllSlots(layout.placements, laneCount)
-      ) {
+      if (requireFilledSlots && !fillsAllSlots(layout.placements, laneCount)) {
         continue;
       }
 
       const next = applyRow(current, layout.placements);
       if (!next) continue;
 
-      const cardsUsedInRow = remainingCards.length - layout.remainingCards.length;
+      const cardsUsedInRow =
+        remainingCards.length - layout.remainingCards.length;
       for (const [cardsUsedLater, scores] of search(
         row + 1,
         next,
@@ -230,13 +226,7 @@ function resultsWithFixedCards(
 
   const allResults = search(0, stage.startNums, stage.cards);
   const results = new Set<number>();
-  for (const [cardsUsed, scores] of allResults) {
-    if (
-      constraints.requireAllCardsUsed &&
-      cardsUsed !== stage.cards.length
-    ) {
-      continue;
-    }
+  for (const [_, scores] of allResults) {
     for (const score of scores) results.add(score);
   }
   return [...results].sort((a, b) => b - a);
@@ -244,30 +234,23 @@ function resultsWithFixedCards(
 
 // 空きスロットがない配置で起こりうる計算結果。星の数の基準にする
 export function possibleResults(stage: Stage): number[] {
-  return resultsWithFixedCards(stage, { requireFilledSlots: true });
+  return resultsWithFixedCards(stage, true);
 }
 
 // カード使用数と空きスロットの有無を指定して起こりうる計算結果
 export function resultsForPlacement(
   stage: Stage,
-  usedAllCards: boolean,
   filledAllSlots: boolean
 ): number[] {
-  return resultsWithFixedCards(stage, {
-    requireAllCardsUsed: usedAllCards,
-    requireFilledSlots: filledAllSlots,
-  });
-}
-
-
-
-// カードを一部だけ使った場合も含めて、起こりうる計算結果
-export function reachableResults(stage: Stage): number[] {
-  return resultsWithFixedCards(stage);
+  return resultsWithFixedCards(stage, filledAllSlots);
 }
 
 // すべてのスロットを埋めていなければ星0。埋めていれば、計算結果の順位で星の数を決める。
-export function calculateStars(stage: Stage, result: number, filledAllSlots: boolean): number {
+export function calculateStars(
+  stage: Stage,
+  result: number,
+  filledAllSlots: boolean
+): number {
   if (!filledAllSlots) return UNUSED_SLOTS_STARS;
   const results = possibleResults(stage);
   const rank = results.filter((value) => value > result).length + 1;
