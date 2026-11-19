@@ -60,10 +60,13 @@ export function ScorePopup({
   // 星3つでないときのヒント
   const hint =
     stars >= MAX_STARS
-      ? null
+      ? { message: "お見事！！", size: "text-3xl" }
       : !filledAllSlots
-        ? "すべての段にカードを置くと星がもらえます"
-        : "もっと大きい数を作れます！";
+        ? {
+            message: "すべての欄にカードを置くと星がもらえます。",
+            size: "text-xl",
+          }
+        : { message: "もっと大きい数を作れます！", size: "text-2xl" };
 
   const rankingFetcher = useFetcher<typeof loader>();
   const submitFetcher = useFetcher<typeof action>();
@@ -104,6 +107,10 @@ export function ScorePopup({
       aria-modal="true"
       aria-label="スコア"
       className="fixed inset-0 z-50 overflow-auto bg-[#5f5f5f]/50 font-serif text-[#55524e] select-none"
+      onClick={(event) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest("[data-score-popup-panel]")) onClose();
+      }}
     >
       <motion.div
         className="flex min-h-full items-center justify-center gap-[30px] p-8"
@@ -112,7 +119,7 @@ export function ScorePopup({
         transition={{ duration: 0.38, ease: [0.65, 0, 0.35, 1] }}
       >
         {/* スコア表示 */}
-        <section className="relative mt-[140px]">
+        <section data-score-popup-panel className="relative mt-[140px]">
           <button
             type="button"
             onClick={onClose}
@@ -133,22 +140,24 @@ export function ScorePopup({
             </svg>
           </button>
 
-          <div className="flex flex-col items-center w-[516px] h-[393px] pt-[60px] bg-[#5f5f5f] shadow-[0_6px_16px_rgba(0,0,0,0.3)]">
-            <h1 className="text-3xl font-normal text-[#e6e6e6] tracking-[0.15em]">
+          <div className="flex flex-col items-center w-[516px] h-[393px] pt-[30px] bg-[#5f5f5f] shadow-[0_6px_16px_rgba(0,0,0,0.3)]">
+            <h1 className="text-xl font-normal text-[#e6e6e6] tracking-[0.15em]">
               あなたのスコア：
             </h1>
-            <div className="mt-5">
-              <Stars count={stars} size={76} />
+            <div className="mt-3">
+              <Stars count={stars} size={90} />
             </div>
             {/* 星3つでないときはヒントを出す（高さは常に確保してレイアウトを揃える） */}
-            <p className="h-[22px] mt-1 text-sm text-[#f3d08e] tracking-wider">
-              {hint}
+            <p
+              className={`h-[22px] mt-1 ${hint.size} text-[#f3d08e] tracking-wider`}
+            >
+              {hint.message}
             </p>
 
             <submitFetcher.Form
               method="post"
               action="/api/ranking"
-              className="relative flex items-center w-[425px] h-[60px] mt-2 px-5 rounded-md bg-[#d9d9d9]"
+              className="relative flex items-center w-[425px] h-[60px] mt-10 px-5 rounded-md bg-[#d9d9d9]"
             >
               <input type="hidden" name="stage" value={stageNumber} />
               <input type="hidden" name="result" value={result} />
@@ -173,13 +182,13 @@ export function ScorePopup({
               <button
                 type="submit"
                 disabled={sending || submitted}
-                className="flex-1 text-center text-base text-[#6b6b6b] tracking-wider hover:text-[#3f3f3f] disabled:hover:text-[#6b6b6b]"
+                className="flex-1 text-center text-2xl text-[#6b6b6b] tracking-wider hover:text-[#3f3f3f] disabled:hover:text-[#6b6b6b]"
               >
                 {sending
                   ? "送信中…"
                   : submitted
                     ? "送信しました"
-                    : "スコアを送信→"}
+                    : "スコアを送信 →"}
               </button>
               {submitError && (
                 <p className="absolute -bottom-5 left-5 text-xs text-[#ffc9c9]">
@@ -191,14 +200,14 @@ export function ScorePopup({
             <div className="flex gap-[20px] mt-4">
               <PageTransitionLink
                 to="/stages"
-                className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#d9d9d9] hover:bg-[#cfcfcf] text-sm text-[#6b6b6b] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
+                className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#d9d9d9] hover:bg-[#cfcfcf] text-xl text-[#6b6b6b] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
               >
                 ステージ選択へ
               </PageTransitionLink>
               {hasNextStage ? (
                 <PageTransitionLink
                   to={`/play/${stageNumber + 1}`}
-                  className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#efbc62] hover:bg-[#e9ad45] text-sm text-[#6b5832] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
+                  className="flex items-center justify-center w-[202px] h-[60px] rounded-lg bg-[#efbc62] hover:bg-[#e9ad45] text-xl text-[#6b5832] tracking-wider shadow-[0_3px_6px_rgba(0,0,0,0.25)]"
                 >
                   次のステージへ
                 </PageTransitionLink>
@@ -212,7 +221,10 @@ export function ScorePopup({
         </section>
 
         {/* ランキング */}
-        <section className="flex flex-col w-[520px] h-[532px] pt-6 pl-[32px] pr-[20px] pb-4 bg-white rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.2)]">
+        <section
+          data-score-popup-panel
+          className="flex flex-col w-[520px] h-[532px] pt-6 pl-[32px] pr-[20px] pb-4 bg-white rounded-2xl shadow-[0_6px_16px_rgba(0,0,0,0.2)]"
+        >
           <h2 className="pl-[58px] text-xl font-normal tracking-[0.2em] text-[#1a1a1a]">
             ランキング
           </h2>
