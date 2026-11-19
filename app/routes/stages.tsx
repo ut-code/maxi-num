@@ -14,7 +14,6 @@ export function meta({}: Route.MetaArgs) {
 export default function StageSelect() {
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-transparent flex flex-col items-center pt-16 sm:pt-24 pb-16 px-4 sm:px-8">
-
       {/* 左上のホームに戻るボタン */}
       <div className="absolute top-4 left-4 z-20">
         <BackButton
@@ -22,7 +21,7 @@ export default function StageSelect() {
           transition="slide"
           slideDirection={-1}
           label="ホームに戻る"
-          className="w-12 h-12 sm:w-14 sm:h-14"
+          className="w-12 h-12 sm:w-14 sm:h-14 rotate-90"
           iconClassName="w-7 h-7 sm:w-8 sm:h-8"
         />
       </div>
@@ -36,7 +35,7 @@ export default function StageSelect() {
           style={{ gridTemplateColumns: `repeat(${COLUMNS}, minmax(0, 1fr))` }}
         >
           {[...Array(STAGE_COUNT).keys()].map((stageNumber) => (
-            <SelectButton key={stageNumber+1} stageNumber={stageNumber+1} />
+            <SelectButton key={stageNumber + 1} stageNumber={stageNumber + 1} />
           ))}
         </div>
       </div>
