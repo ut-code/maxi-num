@@ -78,7 +78,8 @@ export function StageHeader({
   variant = "corner",
 }: StageHeaderProps) {
   const displayTitle =
-    title ?? (stageNumber !== undefined ? `ステージ ${stageNumber}` : "ステージ 1");
+    title ??
+    (stageNumber !== undefined ? `ステージ ${stageNumber}` : "ステージ 1");
 
   if (variant === "corner") {
     return (
@@ -95,8 +96,11 @@ export function StageHeader({
 
         {/* ステージ名表示 */}
         <h1
-          className="text-xl sm:text-2xl font-serif text-[#aba8a1] tracking-wider pr-3 font-normal"
-          style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
+          className="text-xl sm:text-2xl font-serif text-[#333] tracking-wider pr-3 font-normal"
+          style={{
+            fontFamily:
+              "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          }}
         >
           {displayTitle}
         </h1>
@@ -115,7 +119,10 @@ export function StageHeader({
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <h1
           className="text-lg sm:text-xl font-serif text-[#aba8a1] tracking-wider"
-          style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
+          style={{
+            fontFamily:
+              "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          }}
         >
           {displayTitle}
         </h1>
