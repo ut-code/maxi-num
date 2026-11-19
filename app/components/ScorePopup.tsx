@@ -8,8 +8,6 @@ export type ScorePopupProps = {
   stageNumber: number;
   // プレイヤーが並べた順にすべての演算をした結果
   result: number;
-  // ランキングに登録する結果が全カード使用時の結果かを検証するために使う
-  usedAllCards: boolean;
   // 4つのスロット行すべてにカードがあるか。空きがあれば星0になる
   filledAllSlots: boolean;
   // ×ボタン（またはEsc）で呼ばれる。ゲーム画面側でポップアップを消して、プレイした盤面を見られるようにする
@@ -48,7 +46,6 @@ function Stars({ count, size }: { count: number; size: number }) {
 export function ScorePopup({
   stageNumber,
   result,
-  usedAllCards,
   filledAllSlots,
   onClose,
 }: ScorePopupProps) {
@@ -87,7 +84,8 @@ export function ScorePopup({
     const list = listRef.current;
     const myEntry = myEntryRef.current;
     if (!list || !myEntry) return;
-    list.scrollTop = myEntry.offsetTop - (list.clientHeight - myEntry.clientHeight) / 2;
+    list.scrollTop =
+      myEntry.offsetTop - (list.clientHeight - myEntry.clientHeight) / 2;
   }, [myEntryId]);
 
   useEffect(() => {
@@ -147,8 +145,11 @@ export function ScorePopup({
             >
               <input type="hidden" name="stage" value={stageNumber} />
               <input type="hidden" name="result" value={result} />
-              <input type="hidden" name="usedAllCards" value={String(usedAllCards)} />
-              <input type="hidden" name="filledAllSlots" value={String(filledAllSlots)} />
+              <input
+                type="hidden"
+                name="filledAllSlots"
+                value={String(filledAllSlots)}
+              />
               <label className="flex flex-col">
                 <span className="absolute top-1 left-5 text-[10px] text-[#6b6b6b]">
                   名前
@@ -167,7 +168,11 @@ export function ScorePopup({
                 disabled={sending || submitted}
                 className="flex-1 text-center text-base text-[#6b6b6b] tracking-wider hover:text-[#3f3f3f] disabled:hover:text-[#6b6b6b]"
               >
-                {sending ? "送信中…" : submitted ? "送信しました" : "スコアを送信→"}
+                {sending
+                  ? "送信中…"
+                  : submitted
+                    ? "送信しました"
+                    : "スコアを送信→"}
               </button>
               {submitError && (
                 <p className="absolute -bottom-5 left-5 text-xs text-[#ffc9c9]">
@@ -207,9 +212,13 @@ export function ScorePopup({
           {ranking === undefined ? (
             <p className="mt-6 pl-[58px] text-sm text-[#8a8a8a]">読み込み中…</p>
           ) : ranking.error !== undefined ? (
-            <p className="mt-6 pl-[58px] text-sm text-[#c0392b]">{ranking.error}</p>
+            <p className="mt-6 pl-[58px] text-sm text-[#c0392b]">
+              {ranking.error}
+            </p>
           ) : ranking.entries.length === 0 ? (
-            <p className="mt-6 pl-[58px] text-sm text-[#8a8a8a]">まだスコアがありません</p>
+            <p className="mt-6 pl-[58px] text-sm text-[#8a8a8a]">
+              まだスコアがありません
+            </p>
           ) : (
             <ol
               ref={listRef}
@@ -226,7 +235,9 @@ export function ScorePopup({
                   }`}
                 >
                   <span className="w-[110px] text-base">{entry.rank}位</span>
-                  <span className="flex-1 truncate text-base tracking-wider">{entry.name}</span>
+                  <span className="flex-1 truncate text-base tracking-wider">
+                    {entry.name}
+                  </span>
                   <Stars count={entry.stars} size={28} />
                 </li>
               ))}
