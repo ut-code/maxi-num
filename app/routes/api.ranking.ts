@@ -1,6 +1,6 @@
 import { data } from "react-router";
 import { getSupabase, type SupabaseEnv } from "~/db/supabase.server";
-import { calculateStars, possibleResults, reachableResults } from "~/score";
+import { calculateStars, resultsForPlacement } from "~/score";
 import { STAGES } from "~/stages";
 import type { Route } from "./+types/api.ranking";
 
@@ -100,8 +100,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     return data<RankingResponse>({ error: "ステージが見つかりません" }, { status: 400 });
   }
   const stage = STAGES[stageNumber - 1];
-  // そのステージで（カードの使い方に応じて）出せない数値は受け付けない
-  const results = usedAllCards ? possibleResults(stage) : reachableResults(stage);
+  // 申告されたカード使用数・スロット充填状態で出せない数値は受け付けない
+  const results = resultsForPlacement(stage, usedAllCards, filledAllSlots);
   if (!results.includes(result)) {
     return data<RankingResponse>({ error: "スコアが正しくありません" }, { status: 400 });
   }

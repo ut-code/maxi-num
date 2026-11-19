@@ -204,7 +204,7 @@ function StageGame(props?: Partial<Stage>) {
   // 各要素の DOM Ref
   const pipelineContainerRef = useRef<HTMLDivElement | null>(null);
   const startNumsRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const averageBoxRef = useRef<HTMLDivElement | null>(null);
+  const totalBoxRef = useRef<HTMLDivElement | null>(null);
   const outputAvgRef = useRef<HTMLSpanElement | null>(null);
   const rowRefs = useRef<(HTMLDivElement | null)[]>([]);
   const laneSlotRefs = useRef<(HTMLDivElement | null)[][]>([]);
@@ -908,7 +908,7 @@ function StageGame(props?: Partial<Stage>) {
 
       if (laneCount > 1) {
         // === 2, 3レーンの場合: 「合計」ボックスを経由して合計値を出力 ===
-        const avgBoxEl = averageBoxRef.current;
+        const avgBoxEl = totalBoxRef.current;
         const avgCenter = avgBoxEl
           ? getCenter(avgBoxEl)
           : { x: containerRect.width / 2, y: containerRect.height - 60 };
@@ -1466,7 +1466,7 @@ function StageGame(props?: Partial<Stage>) {
           {/* 「合計」ボックス（2, 3レーン時に全幅で表示） */}
           {laneCount > 1 && (
             <div
-              ref={averageBoxRef}
+              ref={totalBoxRef}
               className={`relative flex items-center justify-center ${totalGridWidthClass} h-[46px] sm:h-[50px] rounded-[6px] font-serif text-xl sm:text-2xl font-medium tracking-wider select-none bg-[#d9d9d9] border border-[#4a4a48] text-[#2d2d2d] shadow-[0_4px_6px_rgba(0,0,0,0.25)] transition-all duration-150 mt-6 mb-1 ${
                 isTotalActive
                   ? "ring-2 ring-[#f6ba52] brightness-105 shadow-[0_0_12px_rgba(246,186,82,0.5)]"

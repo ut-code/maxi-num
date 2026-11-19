@@ -1,11 +1,11 @@
 import {
   applyCard,
   applyUnaryCard,
-  calculateAverageScore,
+  calculateTotalScore,
   getCardLaneSpan,
   isUnaryCard,
 } from "./game";
-import type { Card, Stage } from "./stages";
+import { STAGES, type Card, type Stage } from "./stages";
 
 // 上位何%以内なら何個の星か
 const STAR_THRESHOLDS = [
@@ -142,8 +142,25 @@ function applyRow(
   return next;
 }
 
+function fillsAllSlots(placements: CardPlacement[], laneCount: number): boolean {
+  const occupied = Array.from({ length: laneCount }, () => false);
+  for (const placement of placements) {
+    for (
+      let lane = placement.startLane;
+      lane < placement.startLane + placement.laneSpan;
+      lane += 1
+    ) {
+      occupied[lane] = true;
+    }
+  }
+  return occupied.every(Boolean);
+}
+
 // 固定カードの配置を保ったまま手札カードを配置して実行結果をシミュレート
-function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
+function resultsWithFixedCards(
+  stage: Stage,
+  constraints: { requireAllCardsUsed?: boolean; requireFilledSlots?: boolean } = {}
+): number[] {
   const laneCount = stage.startNums.length;
   const fixedCards = stage.fixedCards ?? [];
   const fixedRows: CardRows = Array.from({ length: SLOT_COUNT }, () => []);
@@ -160,29 +177,6 @@ function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
     fixedRows[fc.row].push({ card: fc.card, startLane, laneSpan });
   }
 
-  const maxCardsCache = new Map<string, number>();
-  const maxCardsPlaceable = (row: number, remainingCards: Card[]): number => {
-    if (row === SLOT_COUNT) return 0;
-    const key = JSON.stringify([row, remainingCards]);
-    const cached = maxCardsCache.get(key);
-    if (cached !== undefined) return cached;
-
-    let maximum = 0;
-    for (const layout of expandCardSteps(
-      remainingCards,
-      laneCount,
-      fixedRows[row]
-    )) {
-      const usedInRow = remainingCards.length - layout.remainingCards.length;
-      maximum = Math.max(
-        maximum,
-        usedInRow + maxCardsPlaceable(row + 1, layout.remainingCards)
-      );
-    }
-    maxCardsCache.set(key, maximum);
-    return maximum;
-  };
-
   const cache = new Map<string, Map<number, Set<number>>>();
   const search = (
     row: number,
@@ -190,9 +184,9 @@ function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
     remainingCards: Card[]
   ): Map<number, Set<number>> => {
     if (row === SLOT_COUNT) {
-      const average = calculateAverageScore(current);
-      return average.success
-        ? new Map([[0, new Set([average.value])]])
+      const total = calculateTotalScore(current);
+      return total.success
+        ? new Map([[0, new Set([total.value])]])
         : new Map();
     }
 
@@ -206,6 +200,13 @@ function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
       laneCount,
       fixedRows[row]
     )) {
+      if (
+        constraints.requireFilledSlots &&
+        !fillsAllSlots(layout.placements, laneCount)
+      ) {
+        continue;
+      }
+
       const next = applyRow(current, layout.placements);
       if (!next) continue;
 
@@ -229,24 +230,40 @@ function resultsWithFixedCards(stage: Stage, maximizeCards: boolean): number[] {
 
   const allResults = search(0, stage.startNums, stage.cards);
   const results = new Set<number>();
-  const maxCardsUsed = maximizeCards
-    ? maxCardsPlaceable(0, stage.cards)
-    : undefined;
   for (const [cardsUsed, scores] of allResults) {
-    if (maximizeCards && cardsUsed !== maxCardsUsed) continue;
+    if (
+      constraints.requireAllCardsUsed &&
+      cardsUsed !== stage.cards.length
+    ) {
+      continue;
+    }
     for (const score of scores) results.add(score);
   }
   return [...results].sort((a, b) => b - a);
 }
 
-// 可能な限り多くのカードを使ったときに起こりうる計算結果。星の数の基準にする
+// 空きスロットがない配置で起こりうる計算結果。星の数の基準にする
 export function possibleResults(stage: Stage): number[] {
-  return resultsWithFixedCards(stage, true);
+  return resultsWithFixedCards(stage, { requireFilledSlots: true });
 }
+
+// カード使用数と空きスロットの有無を指定して起こりうる計算結果
+export function resultsForPlacement(
+  stage: Stage,
+  usedAllCards: boolean,
+  filledAllSlots: boolean
+): number[] {
+  return resultsWithFixedCards(stage, {
+    requireAllCardsUsed: usedAllCards,
+    requireFilledSlots: filledAllSlots,
+  });
+}
+
+
 
 // カードを一部だけ使った場合も含めて、起こりうる計算結果
 export function reachableResults(stage: Stage): number[] {
-  return resultsWithFixedCards(stage, false);
+  return resultsWithFixedCards(stage);
 }
 
 // すべてのスロットを埋めていなければ星0。埋めていれば、計算結果の順位で星の数を決める。
