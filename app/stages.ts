@@ -95,7 +95,7 @@ export const STAGES: Stage[] = [
   },
   // ステージ5
   {
-    startNums: [5, 28, 78],
+    startNums: [50, 8, 28],
     fixedCards: [
       { card: { type: "ratio3" }, row: 1, lane: 0 },
       { card: { type: "ratio3" }, row: 3, lane: 0 },
