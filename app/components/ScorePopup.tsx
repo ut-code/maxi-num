@@ -58,6 +58,13 @@ export function ScorePopup({
     [stageNumber, result, filledAllSlots]
   );
   const hasNextStage = stageNumber < STAGES.length;
+  // 星3つでないときのヒント
+  const hint =
+    stars >= MAX_STARS
+      ? null
+      : !filledAllSlots
+        ? "すべての段にカードを置くと星がもらえます"
+        : "もっと大きい数を作れます！";
 
   const rankingFetcher = useFetcher<typeof loader>();
   const submitFetcher = useFetcher<typeof action>();
@@ -105,23 +112,38 @@ export function ScorePopup({
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="absolute -top-[50px] right-[7px] flex items-center justify-center w-[33px] h-[33px] bg-[#d9d9d9] hover:bg-[#cfcfcf] text-white text-2xl leading-none"
+            className="absolute -top-[58px] right-0 flex items-center justify-center w-[44px] h-[44px] rounded-full bg-white text-[#55524e] ring-2 ring-[#55524e]/15 shadow-[0_4px_12px_rgba(0,0,0,0.3)] hover:bg-[#efbc62] hover:text-[#4a3d22] hover:scale-110 active:scale-95 transition-all duration-150 cursor-pointer"
           >
-            ×
+            <svg
+              className="w-6 h-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.75"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
           </button>
 
           <div className="flex flex-col items-center w-[516px] h-[393px] pt-[60px] bg-[#5f5f5f] shadow-[0_6px_16px_rgba(0,0,0,0.3)]">
             <h1 className="text-3xl font-normal text-[#e6e6e6] tracking-[0.15em]">
               あなたのスコア：
             </h1>
-            <div className="mt-6">
+            <div className="mt-5">
               <Stars count={stars} size={76} />
             </div>
+            {/* 星3つでないときはヒントを出す（高さは常に確保してレイアウトを揃える） */}
+            <p className="h-[22px] mt-1 text-sm text-[#f3d08e] tracking-wider">
+              {hint}
+            </p>
 
             <submitFetcher.Form
               method="post"
               action="/api/ranking"
-              className="relative flex items-center w-[425px] h-[60px] mt-4 px-5 rounded-md bg-[#d9d9d9]"
+              className="relative flex items-center w-[425px] h-[60px] mt-2 px-5 rounded-md bg-[#d9d9d9]"
             >
               <input type="hidden" name="stage" value={stageNumber} />
               <input type="hidden" name="result" value={result} />
