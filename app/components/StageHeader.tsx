@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { PageTransitionLink } from "./PageTransitionLink";
 
 export type StageHeaderProps = {
   /**
@@ -33,6 +33,8 @@ export type BackButtonProps = {
   // 読み上げ用のラベル
   label?: string;
   onClick?: () => void;
+  transition?: "blur" | "slide";
+  slideDirection?: 1 | -1;
   // ボタンの大きさなど
   className?: string;
   // 矢印の大きさ
@@ -44,12 +46,16 @@ export function BackButton({
   to,
   label = "ステージ選択に戻る",
   onClick,
+  transition,
+  slideDirection,
   className = "w-10 h-10",
   iconClassName = "w-5 h-5",
 }: BackButtonProps) {
   return (
-    <Link
+    <PageTransitionLink
       to={to}
+      transition={transition ?? "blur"}
+      slideDirection={slideDirection}
       onClick={onClick}
       aria-label={label}
       className={`z-10 flex items-center justify-center rounded-xl bg-[#eceae5] hover:bg-[#e1ded8] active:bg-[#d6d3cc] shadow-[0_2px_4px_rgba(0,0,0,0.08)] active:scale-95 transition-all duration-150 ${className}`}
@@ -65,7 +71,7 @@ export function BackButton({
       >
         <polyline points="15 18 9 12 15 6" />
       </svg>
-    </Link>
+    </PageTransitionLink>
   );
 }
 
@@ -78,7 +84,8 @@ export function StageHeader({
   variant = "corner",
 }: StageHeaderProps) {
   const displayTitle =
-    title ?? (stageNumber !== undefined ? `ステージ ${stageNumber}` : "ステージ 1");
+    title ??
+    (stageNumber !== undefined ? `ステージ ${stageNumber}` : "ステージ 1");
 
   if (variant === "corner") {
     return (
@@ -95,8 +102,11 @@ export function StageHeader({
 
         {/* ステージ名表示 */}
         <h1
-          className="text-xl sm:text-2xl font-serif text-[#aba8a1] tracking-wider pr-3 font-normal"
-          style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
+          className="text-xl sm:text-2xl font-serif text-[#333] tracking-wider pr-3 font-normal"
+          style={{
+            fontFamily:
+              "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          }}
         >
           {displayTitle}
         </h1>
@@ -115,7 +125,10 @@ export function StageHeader({
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <h1
           className="text-lg sm:text-xl font-serif text-[#aba8a1] tracking-wider"
-          style={{ fontFamily: "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif" }}
+          style={{
+            fontFamily:
+              "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          }}
         >
           {displayTitle}
         </h1>
