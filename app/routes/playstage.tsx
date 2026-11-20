@@ -46,9 +46,134 @@ type DragSource =
   | { type: "slotLane"; row: number; col: number };
 
 // ドロップ先の当たり判定
+// swapWith: すでに置かれているカードの上に重ねたとき、入れ替える相手のカード
 type DropTarget =
-  | { type: "wide"; row: number; startLane: number }
-  | { type: "lane"; row: number; col: number };
+  | { type: "wide"; row: number; startLane: number; swapWith?: number }
+  | { type: "lane"; row: number; col: number; swapWith?: number };
+
+// スロット上でのカードの位置
+type SlotPosition = { row: number; startLane: number; laneSpan: number };
+
+// あるレーンに置かれているカード（1レーン・複数レーンどちらも）を返す
+function getLaneOccupant(
+  row: RowSlotState,
+  lane: number,
+): { index: number; isFixed: boolean } | null {
+  const colIdx = row.cols[lane];
+  if (colIdx !== null && colIdx !== undefined) {
+    return { index: colIdx, isFixed: colIdx < 0 };
+  }
+  const wide = row.wideCards.find(
+    (placement) =>
+      lane >= placement.startLane &&
+      lane < placement.startLane + placement.laneSpan,
+  );
+  if (wide) {
+    return {
+      index: wide.originalIndex,
+      isFixed: !!wide.isFixed || wide.originalIndex < 0,
+    };
+  }
+  return null;
+}
+
+// カードがどの行・レーンに置かれているかを返す
+function findCardPosition(
+  rows: RowSlotState[],
+  cardIndex: number,
+): SlotPosition | null {
+  for (let r = 0; r < rows.length; r++) {
+    const col = rows[r].cols.indexOf(cardIndex);
+    if (col >= 0) return { row: r, startLane: col, laneSpan: 1 };
+    const wide = rows[r].wideCards.find(
+      (placement) => placement.originalIndex === cardIndex,
+    );
+    if (wide) {
+      return { row: r, startLane: wide.startLane, laneSpan: wide.laneSpan };
+    }
+  }
+  return null;
+}
+
+function isRangeFree(row: RowSlotState, startLane: number, laneSpan: number) {
+  for (let lane = startLane; lane < startLane + laneSpan; lane++) {
+    if (lane < 0 || lane >= row.cols.length) return false;
+    if (getLaneOccupant(row, lane) !== null) return false;
+  }
+  return true;
+}
+
+// カードを置く（1入力カードは cols、複数入力カードは wideCards に入れる）
+function putCard(
+  row: RowSlotState,
+  cardIndex: number,
+  card: Card,
+  startLane: number,
+  laneSpan: number,
+) {
+  if (isUnaryCard(card)) {
+    row.cols[startLane] = cardIndex;
+  } else {
+    row.wideCards.push({ originalIndex: cardIndex, startLane, laneSpan });
+  }
+}
+
+// ドロップ後の配置を計算する。
+// 置かれているカードに重ねた場合は、そのカードをドラッグ元の位置へ移す（入れ替え）。
+// ドラッグ元がトレイの場合や、元の位置に収まらない場合は、そのカードはトレイに戻す。
+function computeDropResult(
+  rows: RowSlotState[],
+  cardIndex: number,
+  target: DropTarget,
+  sourcePos: SlotPosition | null,
+  getCard: (index: number) => Card | undefined,
+  laneCount: number,
+): { rows: RowSlotState[]; returnedToTray: number | null } | null {
+  const card = getCard(cardIndex);
+  if (!card) return null;
+  const swapWith = target.swapWith;
+
+  const next: RowSlotState[] = rows.map((row) => ({
+    type: "lanes",
+    cols: row.cols.map((colIdx) =>
+      colIdx === cardIndex || colIdx === swapWith ? null : colIdx,
+    ),
+    wideCards: row.wideCards.filter(
+      (placement) =>
+        placement.originalIndex !== cardIndex &&
+        placement.originalIndex !== swapWith,
+    ),
+  }));
+
+  const laneSpan = getCardLaneSpan(card, laneCount);
+  const startLane =
+    target.type === "wide"
+      ? Math.max(0, Math.min(target.startLane, laneCount - laneSpan))
+      : target.col;
+  if (!isRangeFree(next[target.row], startLane, laneSpan)) return null;
+  putCard(next[target.row], cardIndex, card, startLane, laneSpan);
+
+  if (swapWith === undefined) return { rows: next, returnedToTray: null };
+
+  // 入れ替え相手を、ドラッグ元の位置（の近く）に置く
+  const swapCard = getCard(swapWith);
+  if (!swapCard || !sourcePos) return { rows: next, returnedToTray: swapWith };
+  const swapSpan = getCardLaneSpan(swapCard, laneCount);
+  const sourceRow = next[sourcePos.row];
+  let bestStart = -1;
+  let bestDistance = Infinity;
+  for (let s = 0; s <= laneCount - swapSpan; s++) {
+    if (!isRangeFree(sourceRow, s, swapSpan)) continue;
+    const distance = Math.abs(s - sourcePos.startLane);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestStart = s;
+    }
+  }
+  if (bestStart < 0) return { rows: next, returnedToTray: swapWith };
+  putCard(sourceRow, swapWith, swapCard, bestStart, swapSpan);
+  return { rows: next, returnedToTray: null };
+}
 
 // ドラッグ中の状態
 type DragState = {
@@ -318,6 +443,68 @@ function StageGame(props?: Partial<Stage>) {
 
         // 行の上下判定（少し広めにマージンを取る）
         if (y >= rowRect.top - 16 && y <= rowRect.bottom + 16) {
+          // ポインタ直下に置かれているカードがあれば、そのカードと入れ替える
+          let pointerLane = -1;
+          for (let c = 0; c < laneCount; c++) {
+            const cellEl = laneSlotRefs.current[r]?.[c];
+            if (!cellEl) continue;
+            const cellRect = cellEl.getBoundingClientRect();
+            if (x >= cellRect.left && x <= cellRect.right) {
+              pointerLane = c;
+              break;
+            }
+          }
+          const occupant =
+            pointerLane >= 0
+              ? getLaneOccupant(placedRows[r], pointerLane)
+              : null;
+          if (
+            occupant &&
+            !occupant.isFixed &&
+            occupant.index !== ignoredCardIndex
+          ) {
+            const swapWith = occupant.index;
+            if (isUnary) {
+              return { type: "lane", row: r, col: pointerLane, swapWith };
+            }
+            // 複数レーンカードは、空き・入れ替え相手・自分自身のレーンだけを使える
+            const isLaneUsableForSwap = (lane: number) => {
+              const o = getLaneOccupant(placedRows[r], lane);
+              return (
+                o === null ||
+                (!o.isFixed &&
+                  (o.index === swapWith || o.index === ignoredCardIndex))
+              );
+            };
+            let bestStart = -1;
+            let bestDistance = Infinity;
+            for (
+              let s = Math.max(0, pointerLane - laneSpan + 1);
+              s <= Math.min(pointerLane, laneCount - laneSpan);
+              s++
+            ) {
+              const usable = Array.from({ length: laneSpan }, (_, i) =>
+                isLaneUsableForSwap(s + i),
+              ).every(Boolean);
+              if (!usable) continue;
+              const firstCell = laneSlotRefs.current[r]?.[s];
+              const lastCell = laneSlotRefs.current[r]?.[s + laneSpan - 1];
+              if (!firstCell || !lastCell) continue;
+              const centerX =
+                (firstCell.getBoundingClientRect().left +
+                  lastCell.getBoundingClientRect().right) /
+                2;
+              const distance = Math.abs(x - centerX);
+              if (distance < bestDistance) {
+                bestDistance = distance;
+                bestStart = s;
+              }
+            }
+            if (bestStart >= 0) {
+              return { type: "wide", row: r, startLane: bestStart, swapWith };
+            }
+          }
+
           if (!isUnary) {
             // 複数入力カードは、使うレーン数に合わせた幅で配置する。
             if (x >= rowRect.left - 24 && x <= rowRect.right + 24) {
@@ -536,34 +723,50 @@ function StageGame(props?: Partial<Stage>) {
 
         if (cardIndex === null) return;
 
-        setPlacedRows((prev) => {
-          const next = prev.map((row) => {
-            return {
-              type: "lanes" as const,
-              cols: row.cols.map((colIdx) =>
-                colIdx === cardIndex ? null : colIdx
-              ),
-              wideCards: row.wideCards.filter(
-                (placement) => placement.originalIndex !== cardIndex
-              ),
-            };
+        const sourcePos =
+          currentDrag.source.type === "tray"
+            ? null
+            : findCardPosition(placedRows, cardIndex);
+        const result = computeDropResult(
+          placedRows,
+          cardIndex,
+          hitTarget,
+          sourcePos,
+          getCardByIndex,
+          laneCount,
+        );
+        if (!result) return;
+
+        // 入れ替え相手がトレイに戻る場合は、スロットからトレイへ戻るアニメーションを出す
+        const returnedIdx = result.returnedToTray;
+        const returnedCard =
+          returnedIdx !== null ? getCardByIndex(returnedIdx) : undefined;
+        const returnedPos =
+          returnedIdx !== null
+            ? findCardPosition(placedRows, returnedIdx)
+            : null;
+        const trayEl =
+          returnedIdx !== null ? trayItemRefs.current[returnedIdx] : null;
+        const firstTile =
+          returnedPos &&
+          laneSlotRefs.current[returnedPos.row]?.[returnedPos.startLane]
+            ?.firstElementChild;
+        if (returnedCard && trayEl && firstTile) {
+          const fromRect = firstTile.getBoundingClientRect();
+          const toRect = trayEl.getBoundingClientRect();
+          setSnapBack({
+            card: returnedCard,
+            startX: fromRect.left,
+            startY: fromRect.top,
+            targetX: toRect.left,
+            targetY: toRect.top,
+            width: toRect.width,
+            height: toRect.height,
+            isAnimating: false,
           });
+        }
 
-          if (hitTarget.type === "wide") {
-            const card = getCardByIndex(cardIndex);
-            if (!card) return next;
-            const laneSpan = getCardLaneSpan(card, laneCount);
-            next[hitTarget.row].wideCards.push({
-              originalIndex: cardIndex,
-              startLane: Math.min(hitTarget.startLane, laneCount - laneSpan),
-              laneSpan,
-            });
-          } else {
-            next[hitTarget.row].cols[hitTarget.col] = cardIndex;
-          }
-
-          return next;
-        });
+        setPlacedRows(result.rows);
       } else {
         // === スロット外で離した（スロットから外す & スナップバック） ===
         let targetRect = currentDrag.originRect;
@@ -643,6 +846,7 @@ function StageGame(props?: Partial<Stage>) {
     placedRows,
     getHitTarget,
     getSourceCardIndex,
+    getCardByIndex,
     stageCards,
     laneCount,
   ]);
@@ -696,6 +900,16 @@ function StageGame(props?: Partial<Stage>) {
     },
     [isExecuting]
   );
+
+  // 置いたカードをすべて外し、カードの配置を初期状態（固定カードのみ）に戻す
+  const hasPlacedCards = stageCards.some((_, index) => isCardPlaced(index));
+  const handleResetPlacement = useCallback(() => {
+    if (isExecuting) return;
+    setPlacedRows(createInitialRows(laneCount));
+    setOutputNums(stage.startNums);
+    setOutputTotal(null);
+    setErrorMessage(null);
+  }, [isExecuting, createInitialRows, laneCount, stage.startNums]);
 
   // ----------------------------------------------------
   // 実行ボタンクリック時：数字が「同時に」移動しながら計算するアニメーション
@@ -1189,7 +1403,35 @@ function StageGame(props?: Partial<Stage>) {
         </PageTransitionLink>
       )}
 
-      <div className="absolute right-3 top-3 z-20">
+      {/* 右上: カードのリセットボタンとヘルプボタン（カード枚数が多いステージでも隠れないよう画面上部に固定） */}
+      <div className="absolute right-3 top-3 z-20 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={handleResetPlacement}
+          disabled={isExecuting || !hasPlacedCards}
+          aria-label="カードをリセット"
+          title="置いたカードをすべて外して、最初の配置に戻す"
+          className="flex h-16 min-w-16 items-center justify-center gap-2 rounded-2xl bg-white px-4 font-serif text-lg text-[#504d49] tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.12)] transition hover:scale-110 hover:bg-[#f3f0e8] active:scale-90 select-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:bg-white"
+          style={{
+            fontFamily:
+              "'Noto Serif JP', 'Hiragino Mincho ProN', 'Yu Mincho', serif",
+          }}
+        >
+          <svg
+            className="h-6 w-6 shrink-0"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7" />
+            <polyline points="3 3 3 9 9 9" />
+          </svg>
+          <span className="hidden sm:inline">カードをリセット</span>
+        </button>
         <HelpModal stage={stage} />
       </div>
 
@@ -1399,9 +1641,10 @@ function StageGame(props?: Partial<Stage>) {
                         dragState.source.originalIndex ===
                           placement.originalIndex;
                       const isDropTarget =
-                        hoveredTarget?.type === "wide" &&
-                        hoveredTarget.row === rowIdx &&
-                        hoveredTarget.startLane === placement.startLane;
+                        (hoveredTarget?.type === "wide" &&
+                          hoveredTarget.row === rowIdx &&
+                          hoveredTarget.startLane === placement.startLane) ||
+                        hoveredTarget?.swapWith === placement.originalIndex;
                       const isCardActive = Array.from(
                         { length: placement.laneSpan },
                         (_, index) => placement.startLane + index
@@ -1613,6 +1856,7 @@ function StageGame(props?: Partial<Stage>) {
           >
             {isExecuting ? "実行中..." : "実行"}
           </button>
+
         </div>
       </div>
 
@@ -1627,7 +1871,7 @@ function StageGame(props?: Partial<Stage>) {
             height: `${dragState.originRect.height}px`,
             pointerEvents: "none",
             zIndex: 100,
-            transform: "scale(1.05) rotate(1.2deg)",
+            transform: "scale(1.05)",
           }}
           className="shadow-[0_16px_32px_rgba(0,0,0,0.22)] ring-2 ring-[#f6ba52]/70 rounded-[6px]"
         >

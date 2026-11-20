@@ -8,3 +8,4 @@
 
 # Wrangler / Miniflare のローカル状態
 /.wrangler/
+.dev.vars*
