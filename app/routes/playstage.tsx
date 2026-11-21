@@ -57,7 +57,7 @@ type SlotPosition = { row: number; startLane: number; laneSpan: number };
 // あるレーンに置かれているカード（1レーン・複数レーンどちらも）を返す
 function getLaneOccupant(
   row: RowSlotState,
-  lane: number,
+  lane: number
 ): { index: number; isFixed: boolean } | null {
   const colIdx = row.cols[lane];
   if (colIdx !== null && colIdx !== undefined) {
@@ -66,7 +66,7 @@ function getLaneOccupant(
   const wide = row.wideCards.find(
     (placement) =>
       lane >= placement.startLane &&
-      lane < placement.startLane + placement.laneSpan,
+      lane < placement.startLane + placement.laneSpan
   );
   if (wide) {
     return {
@@ -80,13 +80,13 @@ function getLaneOccupant(
 // カードがどの行・レーンに置かれているかを返す
 function findCardPosition(
   rows: RowSlotState[],
-  cardIndex: number,
+  cardIndex: number
 ): SlotPosition | null {
   for (let r = 0; r < rows.length; r++) {
     const col = rows[r].cols.indexOf(cardIndex);
     if (col >= 0) return { row: r, startLane: col, laneSpan: 1 };
     const wide = rows[r].wideCards.find(
-      (placement) => placement.originalIndex === cardIndex,
+      (placement) => placement.originalIndex === cardIndex
     );
     if (wide) {
       return { row: r, startLane: wide.startLane, laneSpan: wide.laneSpan };
@@ -109,7 +109,7 @@ function putCard(
   cardIndex: number,
   card: Card,
   startLane: number,
-  laneSpan: number,
+  laneSpan: number
 ) {
   if (isUnaryCard(card)) {
     row.cols[startLane] = cardIndex;
@@ -127,7 +127,7 @@ function computeDropResult(
   target: DropTarget,
   sourcePos: SlotPosition | null,
   getCard: (index: number) => Card | undefined,
-  laneCount: number,
+  laneCount: number
 ): { rows: RowSlotState[]; returnedToTray: number | null } | null {
   const card = getCard(cardIndex);
   if (!card) return null;
@@ -136,12 +136,12 @@ function computeDropResult(
   const next: RowSlotState[] = rows.map((row) => ({
     type: "lanes",
     cols: row.cols.map((colIdx) =>
-      colIdx === cardIndex || colIdx === swapWith ? null : colIdx,
+      colIdx === cardIndex || colIdx === swapWith ? null : colIdx
     ),
     wideCards: row.wideCards.filter(
       (placement) =>
         placement.originalIndex !== cardIndex &&
-        placement.originalIndex !== swapWith,
+        placement.originalIndex !== swapWith
     ),
   }));
 
@@ -324,9 +324,12 @@ function StageGame(props?: Partial<Stage>) {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [hoveredTarget, setHoveredTarget] = useState<DropTarget | null>(null);
   const [snapBack, setSnapBack] = useState<SnapBackState | null>(null);
+  const [canScrollTray, setCanScrollTray] = useState(false);
+  const [isTrayAtBottom, setIsTrayAtBottom] = useState(false);
 
   // 各要素の DOM Ref
   const pipelineContainerRef = useRef<HTMLDivElement | null>(null);
+  const trayContainerRef = useRef<HTMLDivElement | null>(null);
   const startNumsRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const totalBoxRef = useRef<HTMLDivElement | null>(null);
   const outputAvgRef = useRef<HTMLSpanElement | null>(null);
@@ -382,6 +385,28 @@ function StageGame(props?: Partial<Stage>) {
     }
     return slots;
   }, [stageCards, MIN_TRAY_COUNT]);
+
+  useEffect(() => {
+    const tray = trayContainerRef.current;
+    if (!tray) return;
+
+    const updateScrollState = () => {
+      const canScroll = tray.scrollHeight > tray.clientHeight + 1;
+      setCanScrollTray(canScroll);
+      setIsTrayAtBottom(
+        !canScroll ||
+          tray.scrollHeight - tray.scrollTop - tray.clientHeight <= 8
+      );
+    };
+
+    updateScrollState();
+    tray.scrollTop = 0;
+    updateScrollState();
+
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(tray);
+    return () => resizeObserver.disconnect();
+  }, [traySlots]);
 
   // あるカードがすでにスロットに置かれているか判定
   const isCardPlaced = useCallback(
@@ -484,7 +509,7 @@ function StageGame(props?: Partial<Stage>) {
               s++
             ) {
               const usable = Array.from({ length: laneSpan }, (_, i) =>
-                isLaneUsableForSwap(s + i),
+                isLaneUsableForSwap(s + i)
               ).every(Boolean);
               if (!usable) continue;
               const firstCell = laneSlotRefs.current[r]?.[s];
@@ -733,7 +758,7 @@ function StageGame(props?: Partial<Stage>) {
           hitTarget,
           sourcePos,
           getCardByIndex,
-          laneCount,
+          laneCount
         );
         if (!result) return;
 
@@ -1791,56 +1816,93 @@ function StageGame(props?: Partial<Stage>) {
 
         {/* 右側カラム: トレイ（白いカードコンテナ） & 実行ボタン */}
         <div className="flex flex-col items-center">
-          {/* 白いカードコンテナ */}
-          <div className="bg-[#fdfcf9] rounded-2xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-black/[0.03]">
-            <div className={`flex flex-col gap-3.5 ${totalGridWidthClass}`}>
-              {traySlots.map((item, index) => {
-                if (!item) {
-                  return (
-                    <OperationTile key={`empty-${index}`} className="w-full" />
-                  );
-                }
-
-                const isPlaced = isCardPlaced(item.originalIndex);
-                const isTrayDragging =
-                  dragState?.source.type === "tray" &&
-                  dragState.source.originalIndex === item.originalIndex;
-
-                return (
-                  <div
-                    key={`tray-${item.originalIndex}`}
-                    className="relative flex w-full touch-none justify-start"
-                  >
-                    <OperationTile
-                      ref={(el) => {
-                        trayItemRefs.current[item.originalIndex] = el;
-                      }}
-                      card={item.card}
-                      disabled={isPlaced}
-                      isGhost={isTrayDragging || isPlaced}
-                      onPointerDown={
-                        !isPlaced && !isExecuting
-                          ? (e) =>
-                              handlePointerDown(
-                                e,
-                                {
-                                  type: "tray",
-                                  originalIndex: item.originalIndex,
-                                },
-                                item.card
-                              )
-                          : undefined
-                      }
-                      className={`${getTrayCardWidthClass(item.card)} ${
-                        isPlaced
-                          ? "opacity-30 cursor-not-allowed"
-                          : "cursor-grab active:cursor-grabbing hover:brightness-95"
-                      }`}
-                    />
-                  </div>
+          {/* 白いカードコンテナ：画面に収まる高さに制限し、必要な時だけスクロール */}
+          <div className="relative max-w-[346px] w-full">
+            <div
+              ref={trayContainerRef}
+              onScroll={(event) => {
+                const tray = event.currentTarget;
+                const canScroll = tray.scrollHeight > tray.clientHeight + 1;
+                setCanScrollTray(canScroll);
+                setIsTrayAtBottom(
+                  !canScroll ||
+                    tray.scrollHeight - tray.scrollTop - tray.clientHeight <= 8
                 );
-              })}
+              }}
+              className="touch-pan-y max-h-120 w-full overflow-y-auto overscroll-contain scroll-smooth rounded-2xl border border-black/[0.03] bg-[#fdfcf9] p-5 shadow-[0_4px_24px_rgba(0,0,0,0.06)] [scrollbar-color:#c9c5bc_transparent] [scrollbar-width:thin] sm:p-6"
+            >
+              <div className={`flex flex-col gap-3.5 ${totalGridWidthClass}`}>
+                {traySlots.map((item, index) => {
+                  if (!item) {
+                    return (
+                      <OperationTile
+                        key={`empty-${index}`}
+                        className="w-full"
+                      />
+                    );
+                  }
+
+                  const isPlaced = isCardPlaced(item.originalIndex);
+                  const isTrayDragging =
+                    dragState?.source.type === "tray" &&
+                    dragState.source.originalIndex === item.originalIndex;
+
+                  return (
+                    <div
+                      key={`tray-${item.originalIndex}`}
+                      className="relative flex w-full touch-none justify-start"
+                    >
+                      <OperationTile
+                        ref={(el) => {
+                          trayItemRefs.current[item.originalIndex] = el;
+                        }}
+                        card={item.card}
+                        disabled={isPlaced}
+                        isGhost={isTrayDragging || isPlaced}
+                        onPointerDown={
+                          !isPlaced && !isExecuting
+                            ? (e) =>
+                                handlePointerDown(
+                                  e,
+                                  {
+                                    type: "tray",
+                                    originalIndex: item.originalIndex,
+                                  },
+                                  item.card
+                                )
+                            : undefined
+                        }
+                        className={`${getTrayCardWidthClass(item.card)} ${
+                          isPlaced
+                            ? "opacity-30 cursor-not-allowed"
+                            : "cursor-grab active:cursor-grabbing hover:brightness-95"
+                        }`}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+
+            {canScrollTray && !isTrayAtBottom && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-14 items-end justify-center rounded-b-2xl bg-gradient-to-t from-[#fdfcf9] via-[#fdfcf9]/95 to-transparent pb-2">
+                <span className="flex items-center gap-1 rounded-full border border-black/[0.06] bg-white/95 px-3 py-1 font-serif text-xs text-[#77736b] shadow-sm">
+                  スクロールできます
+                  <svg
+                    className="h-3 w-3 animate-bounce"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 実行ボタン */}
@@ -1856,7 +1918,6 @@ function StageGame(props?: Partial<Stage>) {
           >
             {isExecuting ? "実行中..." : "実行"}
           </button>
-
         </div>
       </div>
 
